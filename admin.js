@@ -416,6 +416,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Parse helpers ────────────────────────────────────────────────────────
+  function parseLocalDate(dateStr) {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) return dateStr;
+    if (typeof dateStr !== 'string') return new Date(dateStr);
+    
+    if (dateStr.includes('T')) {
+      return new Date(dateStr);
+    }
+    
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+    
+    return new Date(dateStr);
+  }
+
   function parsePrice(str) {
     if (!str) return 0;
     return parseFloat(str.replace('R$', '').replace(',', '.').trim());
@@ -447,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     state.bookings.forEach(b => {
-      const bDate = new Date(b.date);
+      const bDate = parseLocalDate(b.date);
       const isConfirmedOrCompleted = b.status === 'Confirmado' || b.status === 'Concluido';
       
       if (isConfirmedOrCompleted) {
@@ -473,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Trends text updates
     const activeThisMonth = state.bookings.filter(b => {
-      const bDate = new Date(b.date);
+      const bDate = parseLocalDate(b.date);
       return bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear;
     }).length;
     $('trend-bookings').textContent = `+${activeThisMonth} este mês`;
@@ -504,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       let total = 0;
       state.bookings.forEach(b => {
-        if (new Date(b.date).toDateString() === dStr && (b.status === 'Confirmado' || b.status === 'Concluido')) {
+        if (parseLocalDate(b.date).toDateString() === dStr && (b.status === 'Confirmado' || b.status === 'Concluido')) {
           total += parsePrice(b.servicePrice);
         }
       });
@@ -588,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sort by creation date or date desc, take 5
     const recent = [...state.bookings]
-      .sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
+      .sort((a, b) => parseLocalDate(b.createdAt || b.date).getTime() - parseLocalDate(a.createdAt || a.date).getTime())
       .slice(0, 5);
 
     if (recent.length === 0) {
@@ -598,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     recent.forEach(b => {
       const tr = document.createElement('tr');
-      const bDate = new Date(b.date);
+      const bDate = parseLocalDate(b.date);
       const dateFormatted = `${String(bDate.getDate()).padStart(2,'0')}/${String(bDate.getMonth()+1).padStart(2,'0')} - ${b.time}`;
       
       tr.innerHTML = `
@@ -697,7 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Has bookings marker
       const dStr = currentCellDate.toDateString();
-      const dayBookings = state.bookings.filter(b => new Date(b.date).toDateString() === dStr && b.status !== 'Cancelado');
+      const dayBookings = state.bookings.filter(b => parseLocalDate(b.date).toDateString() === dStr && b.status !== 'Cancelado');
       if (dayBookings.length > 0) {
         cell.classList.add('has-bookings');
       }
@@ -749,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filter day bookings
     let dayBookings = state.bookings.filter(b => {
-      const matchDate = new Date(b.date).toDateString() === dateStr;
+      const matchDate = parseLocalDate(b.date).toDateString() === dateStr;
       const matchProf = selectedProf === 'todos' || b.professional === selectedProf;
       const matchStatus = agendaFilter === 'todos' || b.status === agendaFilter;
       
@@ -911,15 +931,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const sId = select.value;
       const service = state.services.find(s => s.id === sId);
 
-      const dVal = $('manual-date').value + 'T12:00:00'; // Avoid timezone issues
+      const dVal = $('manual-date').value;
       const inputTime = $('manual-time').value;
       const inputProf = $('manual-prof-select').value;
-      const inputDate = new Date(dVal);
+      const inputDate = parseLocalDate(dVal);
 
       // Verificar colisão de horário para o barbeiro selecionado
       const hasCollision = state.bookings.some(b => {
         if (!b.date || !b.time || b.status === 'Cancelado') return false;
-        const bookingDate = new Date(b.date);
+        const bookingDate = parseLocalDate(b.date);
         return bookingDate.toDateString() === inputDate.toDateString() &&
                b.time === inputTime &&
                b.professional === inputProf;
@@ -1275,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Check last booking date
-      const bDate = new Date(b.date);
+      const bDate = parseLocalDate(b.date);
       if (!customersMap[phone].lastBookingDate || bDate > customersMap[phone].lastBookingDate) {
         customersMap[phone].lastBookingDate = bDate;
         customersMap[phone].lastBookingStr = `${bDate.toLocaleDateString('pt-BR')} às ${b.time}`;

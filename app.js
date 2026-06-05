@@ -432,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isToday = state.date.toDateString() === now.toDateString();
 
     // Buscar agendamentos existentes para desabilitar horários já ocupados
-    const dateStr = state.date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateStr = `${state.date.getFullYear()}-${String(state.date.getMonth() + 1).padStart(2, '0')}-${String(state.date.getDate()).padStart(2, '0')}`; // YYYY-MM-DD
     const { data: bookings } = await supabase.from('agendamentos').select('time, professional, status')
       .eq('date', dateStr)
       .neq('status', 'Cancelado');
@@ -541,7 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Step 4: Confirm ────────────────────────────────────────────────────
   $('btn-confirm').addEventListener('click', async () => {
     // Verificar se o horário já foi agendado por outra pessoa em tempo real
-    const dateStr = state.date.toISOString().split('T')[0];
+    const dateStr = `${state.date.getFullYear()}-${String(state.date.getMonth() + 1).padStart(2, '0')}-${String(state.date.getDate()).padStart(2, '0')}`;
     const { data: bookings } = await supabase.from('agendamentos').select('id')
       .eq('date', dateStr)
       .eq('time', state.time)
