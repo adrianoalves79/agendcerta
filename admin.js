@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setupTabs();
     setupDashboard();
+    setupMobileSidebar();
     setupModals();
     setupLiveNotifications();
     setupManualBookingForm();
@@ -274,6 +275,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         state.currentTab = target;
         $('page-title').textContent = titles[target];
+        
+        // Close mobile sidebar drawer if open
+        const sidebar = $('admin-sidebar');
+        const overlay = $('sidebar-overlay');
+        if (sidebar && sidebar.classList.contains('active')) {
+          sidebar.classList.remove('active');
+          overlay.classList.remove('active');
+        }
         
         renderAll();
       });
@@ -540,6 +549,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (qaSettings) {
       qaSettings.onclick = () => {
         $('btn-tab-settings').click();
+      };
+    }
+  }
+
+  // Setup Mobile Hamburger Menu & Drawer behavior
+  function setupMobileSidebar() {
+    const btnHam = $('btn-hamburger');
+    const sidebar = $('admin-sidebar');
+    const overlay = $('sidebar-overlay');
+
+    if (btnHam && sidebar && overlay) {
+      btnHam.onclick = (e) => {
+        e.stopPropagation();
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+      };
+
+      overlay.onclick = () => {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
       };
     }
   }
