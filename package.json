@@ -1,0 +1,22 @@
+{
+  "name": "agendamento-barbearia-cesar",
+  "version": "1.0.0",
+  "description": "Sistema de agendamento multi-step premium para a César Barbearia",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "barbearia",
+    "agendamento",
+    "multi-step",
+    "premium"
+  ],
+  "author": "Antigravity AI",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}
