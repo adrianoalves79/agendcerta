@@ -18,5 +18,8 @@
   "license": "ISC",
   "devDependencies": {
     "vite": "^5.2.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.107.0"
   }
 }

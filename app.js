@@ -4,6 +4,8 @@
  * ==========================================================================
  */
 
+import { supabase } from './supabaseClient.js';
+
 document.addEventListener('DOMContentLoaded', () => {
 
   // ── Tema de Cores do Painel (CSS Variables)
@@ -47,25 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.style.setProperty('--border-card', t.borderCard);
   }
 
-  function loadBrandingConfig() {
-    let config = localStorage.getItem('cesar_barbearia_configuracoes');
-    if (!config) {
-      config = {
-        name: "César Barbearia",
-        phone: "(11) 99999-9999",
-        address: "Praça Lucila Macedo Dêda, Simão Dias - SE",
-        instagram: "@cesar.barbearia",
-        theme: "gold",
-        openDays: [1, 2, 3, 4, 5, 6], // Mon-Sat
-        timeStart: "09:00",
-        timeEnd: "20:00",
-        interval: 60
-      };
-      localStorage.setItem('cesar_barbearia_configuracoes', JSON.stringify(config));
-    } else {
-      config = JSON.parse(config);
-    }
+  async function loadBrandingConfig() {
+    const { data: config, error } = await supabase.from('configuracoes').select('*').eq('id', 'config_geral').single();
+    if (!config) return;
 
+    state.config = config;
     applyTheme(config.theme);
 
     // Update footer labels dynamically
@@ -103,14 +91,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Listen to configuration changes from admin panel
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'cesar_barbearia_config_alterada') {
+  // Listen to configuration changes from admin panel via Supabase Realtime
+  supabase.channel('config-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'configuracoes' }, payload => {
       loadBrandingConfig();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'servicos' }, payload => {
       loadAndRenderServices();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'profissionais' }, payload => {
       loadAndRenderProfessionals();
-    }
-  });
+    })
+    .subscribe();
 
   // ── State ──────────────────────────────────────────────────────────────
   const state = {
@@ -120,7 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
     date: null,      // Date object
     time: null,      // "HH:MM"
     client: { name: '', phone: '', birth: '', obs: '' },
-    cal: { month: new Date().getMonth(), year: new Date().getFullYear() }
+    cal: { month: new Date().getMonth(), year: new Date().getFullYear() },
+    config: null
   };
 
   // Expose for inline onclick
@@ -211,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sub && step <= 4) sub.textContent = `Passo ${step} de 4`;
   }
 
-  function populateStep(step) {
+  async function populateStep(step) {
     if (!state.service) return;
 
     if (step === 2) {
@@ -220,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       $('s2-dur').textContent  = state.service.duration;
       $('s2-price').textContent = state.service.price;
       buildCalendar();
-      buildTimeSlots();
+      await buildTimeSlots();
     }
 
     if (step === 3) {
@@ -271,17 +264,10 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: "alisamento", name: "Alisamento Americano", price: "R$ 70,00", duration: "90 min", img: "./imagens_servicos/alisamento_americano.webp" }
   ];
 
-  function loadAndRenderServices() {
-    let services = localStorage.getItem('cesar_barbearia_servicos');
-    if (!services) {
-      localStorage.setItem('cesar_barbearia_servicos', JSON.stringify(defaultServices));
+  async function loadAndRenderServices() {
+    let { data: services, error } = await supabase.from('servicos').select('*');
+    if (error || !services || services.length === 0) {
       services = defaultServices;
-    } else {
-      try {
-        services = JSON.parse(services);
-      } catch (e) {
-        services = defaultServices;
-      }
     }
 
     const grid = $('services-list');
@@ -372,8 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
       grid.appendChild(blank);
     }
 
-    const config = JSON.parse(localStorage.getItem('cesar_barbearia_configuracoes') || '{}');
-    const openDays = config.openDays || [1, 2, 3, 4, 5, 6];
+    const openDays = (state.config && state.config.openDays) ? state.config.openDays : [1, 2, 3, 4, 5, 6];
 
     for (let d = 1; d <= totalDays; d++) {
       const dateObj = new Date(year, month, d);
@@ -393,14 +378,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dateObj.toDateString() === today.toDateString()) {
           btn.classList.add('today');
         }
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           state.date = dateObj;
           state.time = null;
           const continueBtn = $('btn-continue-2');
           continueBtn.classList.add('disabled');
           continueBtn.disabled = true;
           buildCalendar();
-          buildTimeSlots();
+          await buildTimeSlots();
         });
       }
 
@@ -408,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function buildTimeSlots() {
+  async function buildTimeSlots() {
     const grid  = $('time-grid');
     grid.innerHTML = '';
 
@@ -417,7 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const config = JSON.parse(localStorage.getItem('cesar_barbearia_configuracoes') || '{}');
+    const { data: configData } = await supabase.from('configuracoes').select('timeStart, timeEnd, interval').eq('id', 'config_geral').single();
+    const config = configData || {};
     const startHour = parseInt(config.timeStart ? config.timeStart.split(':')[0] : 9);
     const endHour = parseInt(config.timeEnd ? config.timeEnd.split(':')[0] : 20);
     const intervalMin = config.interval !== undefined ? config.interval : 60;
@@ -446,21 +432,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const isToday = state.date.toDateString() === now.toDateString();
 
     // Buscar agendamentos existentes para desabilitar horários já ocupados
-    let bookings = [];
-    try {
-      bookings = JSON.parse(localStorage.getItem('cesar_barbearia_agendamentos') || '[]');
-    } catch (e) {
-      console.error("Erro ao carregar agendamentos:", e);
-    }
+    const dateStr = state.date.toISOString().split('T')[0]; // YYYY-MM-DD
+    const { data: bookings } = await supabase.from('agendamentos').select('time, professional, status')
+      .eq('date', dateStr)
+      .neq('status', 'Cancelado');
+    
+    const validBookings = bookings || [];
 
     const bookedTimes = new Set(
-      bookings
+      validBookings
         .filter(b => {
-          if (!b.date || !b.time || b.status === 'Cancelado') return false;
           const isSameProf = b.professional === (state.professional ? state.professional.name : "César");
-          if (!isSameProf) return false;
-          const bookingDate = new Date(b.date);
-          return bookingDate.toDateString() === state.date.toDateString();
+          return isSameProf;
         })
         .map(b => b.time)
     );
@@ -556,21 +539,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Step 4: Confirm ────────────────────────────────────────────────────
-  $('btn-confirm').addEventListener('click', () => {
-    // Verificar se o horário já foi agendado por outra pessoa
-    let bookings = [];
-    try {
-      bookings = JSON.parse(localStorage.getItem('cesar_barbearia_agendamentos') || '[]');
-    } catch (e) {
-      console.error(e);
-    }
-    const isAlreadyBooked = bookings.some(b => {
-      if (!b.date || !b.time || b.status === 'Cancelado') return false;
-      const isSameProf = b.professional === (state.professional ? state.professional.name : "César");
-      if (!isSameProf) return false;
-      const bookingDate = new Date(b.date);
-      return bookingDate.toDateString() === state.date.toDateString() && b.time === state.time;
-    });
+  $('btn-confirm').addEventListener('click', async () => {
+    // Verificar se o horário já foi agendado por outra pessoa em tempo real
+    const dateStr = state.date.toISOString().split('T')[0];
+    const { data: bookings } = await supabase.from('agendamentos').select('id')
+      .eq('date', dateStr)
+      .eq('time', state.time)
+      .eq('professional', state.professional ? state.professional.name : "César")
+      .neq('status', 'Cancelado');
+
+    const isAlreadyBooked = bookings && bookings.length > 0;
 
     if (isAlreadyBooked) {
       alert("Desculpe, este horário já foi reservado por outro cliente. Por favor, escolha outro horário.");
@@ -581,10 +559,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const overlay = $('loading-overlay');
     overlay.classList.add('active');
     
-    // Persist booking in localStorage
+    // Persist booking in Supabase
     try {
-      const newBooking = {
-        id: 'ag-' + Date.now(),
+      const { error } = await supabase.from('agendamentos').insert([{
         clientName: state.client.name,
         clientPhone: state.client.phone,
         clientBirth: state.client.birth,
@@ -593,27 +570,18 @@ document.addEventListener('DOMContentLoaded', () => {
         serviceName: state.service.name,
         servicePrice: state.service.price,
         serviceDuration: state.service.duration,
-        date: state.date ? state.date.toISOString() : new Date().toISOString(),
+        date: dateStr,
         time: state.time,
         professional: state.professional ? state.professional.name : "César",
-        status: "Pendente",
-        createdAt: new Date().toISOString()
-      };
-      
-      const existingBookings = JSON.parse(localStorage.getItem('cesar_barbearia_agendamentos') || '[]');
-      existingBookings.push(newBooking);
-      localStorage.setItem('cesar_barbearia_agendamentos', JSON.stringify(existingBookings));
-      
-      // Trigger live notification event for other tabs
-      localStorage.setItem('cesar_barbearia_novo_agendamento', JSON.stringify({
-        id: newBooking.id,
-        clientName: newBooking.clientName,
-        serviceName: newBooking.serviceName,
-        time: newBooking.time,
-        timestamp: Date.now()
-      }));
+        status: "Pendente"
+      }]);
+
+      if (error) throw error;
     } catch (err) {
-      console.error("Erro ao salvar agendamento no localStorage:", err);
+      console.error("Erro ao salvar agendamento no Supabase:", err);
+      alert("Ocorreu um erro ao salvar o agendamento. Tente novamente.");
+      overlay.classList.remove('active');
+      return;
     }
 
     setTimeout(() => {
@@ -623,10 +591,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Step 5: Actions ────────────────────────────────────────────────────
-  $('btn-whatsapp').addEventListener('click', () => {
-    const config = JSON.parse(localStorage.getItem('cesar_barbearia_configuracoes') || '{}');
-    const targetName = config.name ? config.name.split(' ')[0] : 'César';
-    const targetPhone = config.phone ? '55' + config.phone.replace(/\D/g, '') : '5511999999999';
+  $('btn-whatsapp').addEventListener('click', async () => {
+    const { data: config } = await supabase.from('configuracoes').select('name, phone').eq('id', 'config_geral').single();
+    const targetName = config && config.name ? config.name.split(' ')[0] : 'César';
+    const targetPhone = config && config.phone ? '55' + config.phone.replace(/\D/g, '') : '5511999999999';
 
     const msg = encodeURIComponent(
       `Olá ${targetName}! Confirmo meu agendamento 💈\n\n` +
@@ -671,20 +639,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Utils ──────────────────────────────────────────────────────────────
-  function loadAndRenderProfessionals() {
-    let professionals = [];
-    try {
-      professionals = JSON.parse(localStorage.getItem('cesar_barbearia_profissionais') || '[]');
-    } catch (e) {
-      console.error(e);
-    }
-    
-    // Fallback se estiver vazio
-    if (professionals.length === 0) {
+  async function loadAndRenderProfessionals() {
+    let { data: professionals, error } = await supabase.from('profissionais').select('*');
+    if (error || !professionals || professionals.length === 0) {
       professionals = [
         { id: "cesar", name: "César", specialty: "Degradês e Barboterapia", img: "./imagens_hero/cesar.webp", active: true }
       ];
-      localStorage.setItem('cesar_barbearia_profissionais', JSON.stringify(professionals));
     }
     
     const container = $('client-professionals-list');
