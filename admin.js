@@ -234,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function renderAll() {
     // Refresh database view in state
     await loadDatabase();
+    populateCalendarProfSelect();
 
     if (state.currentTab === 'tab-dashboard') {
       renderDashboard();
@@ -436,6 +437,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Date(dateStr);
   }
 
+  function populateCalendarProfSelect() {
+    const select = $('calendar-prof-select');
+    if (!select) return;
+    const currentVal = select.value || 'todos';
+    select.innerHTML = '<option value="todos">Todos os Profissionais</option>';
+    state.professionals.forEach(p => {
+      if (p.active !== false) {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      }
+    });
+    select.value = currentVal;
+  }
+
   function parsePrice(str) {
     if (!str) return 0;
     return parseFloat(str.replace('R$', '').replace(',', '.').trim());
@@ -622,17 +639,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const dateFormatted = `${String(bDate.getDate()).padStart(2,'0')}/${String(bDate.getMonth()+1).padStart(2,'0')} - ${b.time}`;
       
       tr.innerHTML = `
-        <td>
+        <td data-label="Cliente">
           <div class="cell-user-info">
             <span class="cell-user-name">${b.clientName}</span>
             <span class="cell-user-phone">${b.clientPhone}</span>
           </div>
         </td>
-        <td>${b.serviceName}</td>
-        <td>${dateFormatted}</td>
-        <td>${b.professional || 'César'}</td>
-        <td><span class="badge-status ${b.status.toLowerCase()}">${b.status}</span></td>
-        <td style="text-align: right;">
+        <td data-label="Serviço">${b.serviceName}</td>
+        <td data-label="Data & Horário">${dateFormatted}</td>
+        <td data-label="Profissional">${b.professional || 'César'}</td>
+        <td data-label="Status"><span class="badge-status ${b.status.toLowerCase()}">${b.status}</span></td>
+        <td data-label="Ações" style="text-align: right;">
           <button class="btn-text-link whatsapp" data-phone="${b.clientPhone}" data-name="${b.clientName}" data-service="${b.serviceName}" data-date="${bDate.toLocaleDateString('pt-BR')}" data-time="${b.time}">WhatsApp</button>
         </td>
       `;
@@ -801,12 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Render status indicators
       let actionsHTML = '';
-      if (b.status === 'Pendente') {
-        actionsHTML = `
-          <button class="btn-action-status confirm" data-id="${b.id}">Confirmar</button>
-          <button class="btn-action-status cancel" data-id="${b.id}">Recusar</button>
-        `;
-      } else if (b.status === 'Confirmado') {
+      if (b.status === 'Confirmado' || b.status === 'Pendente') {
         actionsHTML = `
           <button class="btn-action-status conclude" data-id="${b.id}">Concluir</button>
           <button class="btn-action-status cancel" data-id="${b.id}">Cancelar</button>
@@ -833,7 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               ${b.clientPhone}
             </span>
-            <span class="agenda-meta-item">👑 César</span>
+            <span class="agenda-meta-item">💈 ${b.professional || 'César'}</span>
             <span class="agenda-meta-item" style="color: var(--gold); font-weight:700;">${b.servicePrice}</span>
           </div>
           ${hasObsHTML}
@@ -919,13 +931,115 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Fill professionals select options
+    function populateProfessionalsSelect() {
+      const profSelect = $('manual-prof-select');
+      if (!profSelect) return;
+      profSelect.innerHTML = '';
+      state.professionals.forEach(p => {
+        if (p.active !== false) {
+          const opt = document.createElement('option');
+          opt.value = p.name;
+          opt.textContent = p.name;
+          profSelect.appendChild(opt);
+        }
+      });
+    }
+
+    // Check available time slots dynamically
+    function updateManualTimeSlots() {
+      const timeSelect = $('manual-time');
+      if (!timeSelect) return;
+      
+      const dVal = $('manual-date').value;
+      const inputProf = $('manual-prof-select').value;
+      if (!dVal || !inputProf) return;
+      
+      const inputDate = parseLocalDate(dVal);
+      const dStr = inputDate.toDateString();
+      
+      const bookedTimes = new Set(
+        state.bookings
+          .filter(b => {
+            if (!b.date || !b.time || b.status === 'Cancelado') return false;
+            const bookingDate = parseLocalDate(b.date);
+            return bookingDate.toDateString() === dStr && b.professional === inputProf;
+          })
+          .map(b => b.time)
+      );
+      
+      const config = state.config || {};
+      const startHour = parseInt(config.timeStart ? config.timeStart.split(':')[0] : 9);
+      const endHour = parseInt(config.timeEnd ? config.timeEnd.split(':')[0] : 20);
+      const intervalMin = config.interval !== undefined ? config.interval : 60;
+      
+      const slots = [];
+      const current = new Date();
+      current.setHours(startHour, 0, 0, 0);
+      
+      const endLimit = new Date();
+      endLimit.setHours(endHour, 0, 0, 0);
+      
+      while (current < endLimit) {
+        const h = String(current.getHours()).padStart(2, '0');
+        const m = String(current.getMinutes()).padStart(2, '0');
+        const timeStr = `${h}:${m}`;
+        
+        if (current.getHours() !== 12) {
+          slots.push(timeStr);
+        }
+        
+        current.setMinutes(current.getMinutes() + intervalMin);
+      }
+      
+      if (slots.length === 0) {
+        slots.push("09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00");
+      }
+      
+      const previousVal = timeSelect.value;
+      timeSelect.innerHTML = '';
+      
+      slots.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        
+        const isBooked = bookedTimes.has(t);
+        if (isBooked) {
+          opt.textContent = `${t} (Ocupado)`;
+          opt.disabled = true;
+          opt.style.color = '#888';
+        } else {
+          opt.textContent = t;
+        }
+        
+        timeSelect.appendChild(opt);
+      });
+      
+      if (previousVal && Array.from(timeSelect.options).some(o => o.value === previousVal && !o.disabled)) {
+        timeSelect.value = previousVal;
+      } else {
+        const firstEnabled = Array.from(timeSelect.options).find(o => !o.disabled);
+        if (firstEnabled) {
+          timeSelect.value = firstEnabled.value;
+        }
+      }
+    }
+
     // Modal click trigger should populate select options
-    $('btn-manual-booking').addEventListener('click', populateServicesSelect);
+    $('btn-manual-booking').addEventListener('click', () => {
+      populateServicesSelect();
+      populateProfessionalsSelect();
+      updateManualTimeSlots();
+    });
 
     // Set today as default date value
     $('manual-date').value = new Date().toISOString().split('T')[0];
+    
+    // Watch date and professional changes
+    $('manual-date').addEventListener('change', updateManualTimeSlots);
+    $('manual-prof-select').addEventListener('change', updateManualTimeSlots);
 
-    $('form-manual-booking').onsubmit = (e) => {
+    $('form-manual-booking').onsubmit = async (e) => {
       e.preventDefault();
       
       const sId = select.value;
@@ -950,30 +1064,37 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!confirmOverbook) return;
       }
 
-      const newB = {
-        id: 'ag-manual-' + Date.now(),
-        clientName: $('manual-client-name').value.trim(),
-        clientPhone: $('manual-client-phone').value.trim(),
-        clientBirth: '',
-        clientObs: $('manual-obs').value.trim(),
-        serviceId: sId,
-        serviceName: service.name,
-        servicePrice: service.price,
-        serviceDuration: service.duration,
-        date: new Date(dVal).toISOString(),
-        time: $('manual-time').value,
-        professional: $('manual-prof-select').value,
-        status: 'Confirmado',
-        createdAt: new Date().toISOString()
-      };
+      const clientName = $('manual-client-name').value.trim();
+      const clientPhone = $('manual-client-phone').value.trim();
+      const clientObs = $('manual-obs').value.trim();
 
-      state.bookings.push(newB);
-      saveBookings();
-      
+      try {
+        const { error } = await supabase.from('agendamentos').insert([{
+          clientName: clientName,
+          clientPhone: clientPhone,
+          clientBirth: '',
+          clientObs: clientObs,
+          serviceId: sId,
+          serviceName: service.name,
+          servicePrice: service.price,
+          serviceDuration: service.duration,
+          date: dVal, // YYYY-MM-DD
+          time: inputTime,
+          professional: inputProf,
+          status: 'Confirmado'
+        }]);
+
+        if (error) throw error;
+        
+        showToast("Agendamento Registrado", `Cliente ${clientName} agendado para às ${inputTime} com sucesso.`);
+      } catch (err) {
+        console.error("Erro ao salvar agendamento manual:", err);
+        alert("Erro ao registrar agendamento. Tente novamente.");
+        return;
+      }
+
       closeModal('modal-manual-booking');
       $('form-manual-booking').reset();
-      
-      showToast("Agendamento Registrado", `Cliente ${newB.clientName} agendado para às ${newB.time} com sucesso.`);
       
       // Select the day of manual booking
       state.selectedDate = new Date(dVal);
@@ -1189,10 +1310,15 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       // Delete Click
-      card.querySelector('.delete-btn').onclick = () => {
+      card.querySelector('.delete-btn').onclick = async () => {
         if (confirm(`Tem certeza que deseja excluir o serviço "${s.name}"? Isso impedirá novos agendamentos para ele.`)) {
+          const { error } = await supabase.from('servicos').delete().eq('id', s.id);
+          if (error) {
+            console.error("Erro ao deletar serviço no Supabase:", error);
+            alert("Erro ao deletar serviço. Tente novamente.");
+            return;
+          }
           state.services = state.services.filter(item => item.id !== s.id);
-          saveServices();
           showToast("Serviço Removido", `O serviço "${s.name}" foi excluído.`);
           renderAll();
         }
@@ -1241,14 +1367,19 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal('modal-professional');
       };
 
-      card.querySelector('.delete-prof-btn').onclick = () => {
+      card.querySelector('.delete-prof-btn').onclick = async () => {
         if (p.id === 'cesar') {
           alert("Não é possível excluir o profissional principal (César).");
           return;
         }
         if (confirm(`Deseja mesmo remover o barbeiro ${p.name} da equipe?`)) {
+          const { error } = await supabase.from('profissionais').delete().eq('id', p.id);
+          if (error) {
+            console.error("Erro ao deletar profissional no Supabase:", error);
+            alert("Erro ao deletar profissional. Tente novamente.");
+            return;
+          }
           state.professionals = state.professionals.filter(item => item.id !== p.id);
-          saveProfessionals();
           showToast("Barbeiro Removido", `${p.name} foi descadastrado.`);
           renderAll();
         }
@@ -1326,15 +1457,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const stamps = clientFidelidades[c.phone] !== undefined ? clientFidelidades[c.phone] : (c.visits % 10);
 
       tr.innerHTML = `
-        <td style="font-weight:600;">${c.name}</td>
-        <td>${c.phone}</td>
-        <td>${c.birth}</td>
-        <td style="font-weight:700;color:var(--gold);">${c.visits} cortes</td>
-        <td style="font-size:12px;color:var(--text-muted);">${c.lastBookingStr}</td>
-        <td>
+        <td data-label="Cliente" style="font-weight:600;">${c.name}</td>
+        <td data-label="WhatsApp">${c.phone}</td>
+        <td data-label="Nascimento">${c.birth}</td>
+        <td data-label="Visitas" style="font-weight:700;color:var(--gold);">${c.visits} cortes</td>
+        <td data-label="Último Agendamento" style="font-size:12px;color:var(--text-muted);">${c.lastBookingStr}</td>
+        <td data-label="Fidelidade">
           <span class="crm-fidelidade-badge">👑 ${stamps}/10</span>
         </td>
-        <td style="text-align: right;">
+        <td data-label="Ações" style="text-align: right;">
           <button class="btn-primary loyalty-card-btn" data-phone="${c.phone}" data-name="${c.name}">Fidelidade</button>
         </td>
       `;

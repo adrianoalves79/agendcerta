@@ -113,7 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
     time: null,      // "HH:MM"
     client: { name: '', phone: '', birth: '', obs: '' },
     cal: { month: new Date().getMonth(), year: new Date().getFullYear() },
-    config: null
+    config: null,
+    lastBookingId: null
   };
 
   // Expose for inline onclick
@@ -561,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Persist booking in Supabase
     try {
-      const { error } = await supabase.from('agendamentos').insert([{
+      const { data, error } = await supabase.from('agendamentos').insert([{
         clientName: state.client.name,
         clientPhone: state.client.phone,
         clientBirth: state.client.birth,
@@ -573,10 +574,14 @@ document.addEventListener('DOMContentLoaded', () => {
         date: dateStr,
         time: state.time,
         professional: state.professional ? state.professional.name : "César",
-        status: "Pendente"
-      }]);
+        status: "Confirmado"
+      }]).select();
 
       if (error) throw error;
+      
+      if (data && data[0]) {
+        state.lastBookingId = data[0].id;
+      }
     } catch (err) {
       console.error("Erro ao salvar agendamento no Supabase:", err);
       alert("Ocorreu um erro ao salvar o agendamento. Tente novamente.");
@@ -595,15 +600,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const { data: config } = await supabase.from('configuracoes').select('name, phone').eq('id', 'config_geral').single();
     const targetName = config && config.name ? config.name.split(' ')[0] : 'César';
     const targetPhone = config && config.phone ? '55' + config.phone.replace(/\D/g, '') : '5511999999999';
+    const barberShopName = config && config.name ? config.name : 'César Barbearia';
+    
+    const bookingCode = state.lastBookingId ? state.lastBookingId.substring(0, 8).toUpperCase() : 'AG' + Date.now().toString().slice(-6);
+    const cancelLink = `${window.location.origin}/cancelar.html?code=${state.lastBookingId || ''}`;
 
     const msg = encodeURIComponent(
-      `Olá ${targetName}! Confirmo meu agendamento 💈\n\n` +
-      `*Serviço:* ${state.service.name}\n` +
-      `*Profissional:* ${state.professional ? state.professional.name : "César"}\n` +
-      `*Data:* ${fmtDate(state.date)}\n` +
-      `*Horário:* ${state.time}\n` +
-      `*Cliente:* ${state.client.name}\n` +
-      `*WhatsApp:* ${state.client.phone}`
+      `Olá!\n\n` +
+      `Acabei de realizar um agendamento pelo sistema.\n\n` +
+      `Cliente: ${state.client.name}\n` +
+      `Unidade: ${barberShopName}\n` +
+      `Profissional: ${state.professional ? state.professional.name : "César"}\n` +
+      `Serviço: ${state.service.name}\n` +
+      `Data: ${fmtDate(state.date)}\n` +
+      `Horário: ${state.time}\n` +
+      `Valor: ${state.service.price}\n` +
+      `Código: ${bookingCode}\n\n` +
+      `Caso precise cancelar:\n` +
+      `${cancelLink}\n\n` +
+      `Nos vemos em breve. Obrigado!`
     );
     window.open(`https://api.whatsapp.com/send?phone=${targetPhone}&text=${msg}`, '_blank');
   });
