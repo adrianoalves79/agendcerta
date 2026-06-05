@@ -597,7 +597,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Unique Clients Count
     const uniquePhones = new Set();
     state.bookings.forEach(b => {
-      if (b.clientPhone) {
+      const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+      if (b.clientPhone && !isBlock) {
         uniquePhones.add(b.clientPhone.trim());
       }
     });
@@ -606,6 +607,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Process all bookings
     state.bookings.forEach(b => {
       if (!b.date) return;
+      const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+      if (isBlock) return;
+
       const bDate = parseLocalDate(b.date);
       const bDateMidnight = new Date(bDate);
       bDateMidnight.setHours(0, 0, 0, 0);
@@ -870,49 +874,84 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'agenda-item';
       
+      const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+      
       // Render status indicators
       let actionsHTML = '';
-      if (b.status === 'Confirmado' || b.status === 'Pendente') {
-        actionsHTML = `
-          <button class="btn-action-status conclude" data-id="${b.id}">Concluir</button>
-          <button class="btn-action-status cancel" data-id="${b.id}">Cancelar</button>
-        `;
+      if (isBlock) {
+        if (b.status === 'Confirmado' || b.status === 'Pendente') {
+          actionsHTML = `
+            <button class="btn-action-status cancel" data-id="${b.id}" style="background-color: var(--color-red); color: #000;">Desbloquear</button>
+          `;
+        } else {
+          actionsHTML = `<span class="badge-status ${b.status.toLowerCase()}">${b.status === 'cancelado' ? 'desbloqueado' : b.status}</span>`;
+        }
       } else {
-        // Concluded or Cancelled
-        actionsHTML = `<span class="badge-status ${b.status.toLowerCase()}">${b.status}</span>`;
+        if (b.status === 'Confirmado' || b.status === 'Pendente') {
+          actionsHTML = `
+            <button class="btn-action-status conclude" data-id="${b.id}">Concluir</button>
+            <button class="btn-action-status cancel" data-id="${b.id}">Cancelar</button>
+          `;
+        } else {
+          actionsHTML = `<span class="badge-status ${b.status.toLowerCase()}">${b.status}</span>`;
+        }
       }
 
       const hasObsHTML = b.clientObs ? `<div class="agenda-obs"><strong>Obs:</strong> ${b.clientObs}</div>` : '';
 
-      card.innerHTML = `
-        <div class="agenda-time">
-          <span class="agenda-time-val">${b.time}</span>
-          <span class="agenda-time-dur">${b.serviceDuration}</span>
-        </div>
-        <div class="agenda-detail">
-          <div class="agenda-title-row">
-            <span class="agenda-client-name">${b.clientName}</span>
-            <span class="agenda-service-badge">${b.serviceName}</span>
+      if (isBlock) {
+        card.innerHTML = `
+          <div class="agenda-time">
+            <span class="agenda-time-val">${b.time}</span>
+            <span class="agenda-time-dur">${b.serviceDuration}</span>
           </div>
-          <div class="agenda-meta-row">
-            <span class="agenda-meta-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              ${b.clientPhone}
-            </span>
-            <span class="agenda-meta-item">💈 ${b.professional || 'César'}</span>
-            <span class="agenda-meta-item" style="color: var(--gold); font-weight:700;">${b.servicePrice}</span>
+          <div class="agenda-detail">
+            <div class="agenda-title-row">
+              <span class="agenda-client-name" style="color: var(--color-red); font-weight:700;">🚫 HORÁRIO BLOQUEADO</span>
+              <span class="agenda-service-badge" style="background-color: rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); color: var(--color-red);">${b.professional || 'César'}</span>
+            </div>
+            <div class="agenda-meta-row">
+              <span class="agenda-meta-item">Este horário está reservado para bloqueio interno da agenda.</span>
+            </div>
+            ${hasObsHTML}
           </div>
-          ${hasObsHTML}
-        </div>
-        <div class="agenda-actions">
-          <div class="agenda-actions-row">
-            ${actionsHTML}
-            <button class="btn-action-icon whatsapp" data-phone="${b.clientPhone}" data-name="${b.clientName}" data-service="${b.serviceName}" data-date="${sDate.toLocaleDateString('pt-BR')}" data-time="${b.time}" title="Enviar WhatsApp">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-            </button>
+          <div class="agenda-actions">
+            <div class="agenda-actions-row">
+              ${actionsHTML}
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        card.innerHTML = `
+          <div class="agenda-time">
+            <span class="agenda-time-val">${b.time}</span>
+            <span class="agenda-time-dur">${b.serviceDuration}</span>
+          </div>
+          <div class="agenda-detail">
+            <div class="agenda-title-row">
+              <span class="agenda-client-name">${b.clientName}</span>
+              <span class="agenda-service-badge">${b.serviceName}</span>
+            </div>
+            <div class="agenda-meta-row">
+              <span class="agenda-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                ${b.clientPhone}
+              </span>
+              <span class="agenda-meta-item">💈 ${b.professional || 'César'}</span>
+              <span class="agenda-meta-item" style="color: var(--gold); font-weight:700;">${b.servicePrice}</span>
+            </div>
+            ${hasObsHTML}
+          </div>
+          <div class="agenda-actions">
+            <div class="agenda-actions-row">
+              ${actionsHTML}
+              <button class="btn-action-icon whatsapp" data-phone="${b.clientPhone}" data-name="${b.clientName}" data-service="${b.serviceName}" data-date="${sDate.toLocaleDateString('pt-BR')}" data-time="${b.time}" title="Enviar WhatsApp">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }
 
       // Click handlers
       card.querySelectorAll('.btn-action-status').forEach(btn => {
@@ -921,10 +960,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       });
 
-      card.querySelector('.whatsapp').onclick = (e) => {
-        const btn = e.currentTarget;
-        openWhatsappOwnerMsg(btn.dataset);
-      };
+      if (!isBlock) {
+        card.querySelector('.whatsapp').onclick = (e) => {
+          const btn = e.currentTarget;
+          openWhatsappOwnerMsg(btn.dataset);
+        };
+      }
 
       container.appendChild(card);
     });
@@ -946,9 +987,14 @@ document.addEventListener('DOMContentLoaded', () => {
       triggerFidelidadeStampAuto(item.clientPhone);
 
       showToast("Agendamento Concluído", `Corte de ${item.clientName} concluído com sucesso. Selo adicionado!`);
-    } else if (action === 'Recusar' || action === 'Cancelar') {
+    } else if (action === 'Recusar' || action === 'Cancelar' || action === 'Desbloquear') {
       newStatus = 'Cancelado';
-      showToast("Agendamento Cancelado", `Horário de ${item.clientName} às ${item.time} foi cancelado.`);
+      const isBlock = item.serviceId === 'bloqueio' || item.clientName === 'Horário Bloqueado';
+      if (isBlock) {
+        showToast("Horário Desbloqueado", `O horário das ${item.time} foi liberado com sucesso.`);
+      } else {
+        showToast("Agendamento Cancelado", `Horário de ${item.clientName} às ${item.time} foi cancelado.`);
+      }
     }
 
     item.status = newStatus;
@@ -1119,8 +1165,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const clientName = $('manual-client-name').value.trim();
-      const clientPhone = $('manual-client-phone').value.trim();
+      const isBlock = clientName === "Horário Bloqueado";
+      const clientPhone = isBlock ? "(00) 00000-0000" : $('manual-client-phone').value.trim();
       const clientObs = $('manual-obs').value.trim();
+
+      const finalServiceId = isBlock ? "bloqueio" : sId;
+      const finalServiceName = isBlock ? "Bloqueio de Agenda" : (service ? service.name : "Serviço");
+      const finalServicePrice = isBlock ? "R$ 0,00" : (service ? service.price : "R$ 0,00");
+      const finalServiceDuration = isBlock ? `${state.config.interval || 60} min` : (service ? service.duration : "60 min");
 
       try {
         const { error } = await supabase.from('agendamentos').insert([{
@@ -1128,10 +1180,10 @@ document.addEventListener('DOMContentLoaded', () => {
           clientPhone: clientPhone,
           clientBirth: '',
           clientObs: clientObs,
-          serviceId: sId,
-          serviceName: service.name,
-          servicePrice: service.price,
-          serviceDuration: service.duration,
+          serviceId: finalServiceId,
+          serviceName: finalServiceName,
+          servicePrice: finalServicePrice,
+          serviceDuration: finalServiceDuration,
           date: dVal, // YYYY-MM-DD
           time: inputTime,
           professional: inputProf,

@@ -2158,7 +2158,8 @@ select option {
   text-transform: uppercase;
   color: var(--text-muted);
   letter-spacing: 0.5px;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .db-metric-value {
@@ -2292,7 +2293,7 @@ select option {
 /* Quick actions */
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -2325,6 +2326,8 @@ select option {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #fff;
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .quick-action-btn:hover {
@@ -2341,7 +2344,7 @@ select option {
 /* Responsive adjustments */
 @media (max-width: 992px) {
   .dashboard-metrics-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .dashboard-rows-grid {
     grid-template-columns: 1fr;
@@ -2350,7 +2353,7 @@ select option {
 
 @media (max-width: 576px) {
   .dashboard-metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
   .db-metric-card {
@@ -2360,6 +2363,7 @@ select option {
     font-size: 18px;
   }
   .quick-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
   .quick-action-btn {
@@ -2371,6 +2375,8 @@ select option {
   }
   .quick-action-btn span {
     font-size: 11px;
+    white-space: normal;
+    line-height: 1.2;
   }
   .dashboard-link-card {
     flex-direction: column;
