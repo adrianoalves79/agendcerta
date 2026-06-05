@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     setupTabs();
+    setupDashboard();
     setupModals();
     setupLiveNotifications();
     setupManualBookingForm();
@@ -466,207 +467,231 @@ document.addEventListener('DOMContentLoaded', () => {
     return d.toDateString();
   }
 
+  // Helper to check if two dates are in the same week (Sunday-Saturday)
+  function isSameWeek(d1, d2) {
+    const getSunday = (d) => {
+      const day = d.getDay();
+      const sunday = new Date(d);
+      sunday.setDate(d.getDate() - day);
+      sunday.setHours(0, 0, 0, 0);
+      return sunday.getTime();
+    };
+    return getSunday(d1) === getSunday(d2);
+  }
+
+  // Setup Dashboard static elements and event listeners
+  function setupDashboard() {
+    // Copy link click
+    const btnCopy = $('btn-copy-booking-link');
+    if (btnCopy) {
+      btnCopy.onclick = () => {
+        const url = $('dashboard-booking-url').textContent;
+        navigator.clipboard.writeText(url).then(() => {
+          showToast("Link Copiado", "O link de agendamento foi copiado para a área de transferência!");
+        }).catch(err => {
+          console.error("Could not copy: ", err);
+          // Fallback
+          const el = document.createElement('textarea');
+          el.value = url;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+          showToast("Link Copiado", "O link de agendamento foi copiado!");
+        });
+      };
+    }
+
+    // Open link click
+    const btnOpen = $('btn-open-booking-link');
+    if (btnOpen) {
+      btnOpen.onclick = () => {
+        const url = $('dashboard-booking-url').textContent;
+        window.open(url, '_blank');
+      };
+    }
+
+    // Quick actions binding
+    const qaNewBooking = $('qa-new-booking');
+    if (qaNewBooking) {
+      qaNewBooking.onclick = () => {
+        $('btn-manual-booking').click();
+      };
+    }
+
+    const qaNewClient = $('qa-new-client');
+    if (qaNewClient) {
+      qaNewClient.onclick = () => {
+        $('btn-tab-crm').click();
+      };
+    }
+
+    const qaBlockTime = $('qa-block-time');
+    if (qaBlockTime) {
+      qaBlockTime.onclick = () => {
+        openModal('modal-manual-booking');
+        $('manual-client-name').value = "Horário Bloqueado";
+        $('manual-client-phone').value = "(00) 00000-0000";
+        $('manual-obs').value = "Bloqueio manual de agenda.";
+      };
+    }
+
+    const qaSettings = $('qa-settings');
+    if (qaSettings) {
+      qaSettings.onclick = () => {
+        $('btn-tab-settings').click();
+      };
+    }
+  }
+
   // ── TAB 1: RENDER DASHBOARD ──────────────────────────────────────────────
   function renderDashboard() {
-    const todayStr = getTodayString();
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+    const todayStr = today.toDateString();
 
-    // 1. Calculate metrics
-    let monthlyRevenue = 0;
-    let dailyRevenue = 0;
-    let totalBookings = state.bookings.filter(b => b.status !== 'Cancelado').length;
-    
-    // CRM active client count
+    // Set dynamic booking URL
+    const bookingUrl = window.location.origin;
+    const urlEl = $('dashboard-booking-url');
+    if (urlEl) {
+      urlEl.textContent = bookingUrl;
+    }
+
+    // Calculate metrics
+    let bookingsToday = 0;
+    let bookingsWeek = 0;
+    let revenueToday = 0;
+    let revenueWeek = 0;
+    let pendingCount = 0;
+
+    // Unique Clients Count
     const uniquePhones = new Set();
     state.bookings.forEach(b => {
-      if (b.clientPhone) uniquePhones.add(b.clientPhone);
+      if (b.clientPhone) {
+        uniquePhones.add(b.clientPhone.trim());
+      }
     });
-    
+    const totalClients = uniquePhones.size;
+
+    // Process all bookings
     state.bookings.forEach(b => {
+      if (!b.date) return;
       const bDate = parseLocalDate(b.date);
-      const isConfirmedOrCompleted = b.status === 'Confirmado' || b.status === 'Concluido';
-      
-      if (isConfirmedOrCompleted) {
-        const val = parsePrice(b.servicePrice);
-        
-        // Month calc
-        if (bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear) {
-          monthlyRevenue += val;
-        }
-        
-        // Daily calc
-        if (bDate.toDateString() === todayStr) {
-          dailyRevenue += val;
-        }
+      const bDateMidnight = new Date(bDate);
+      bDateMidnight.setHours(0, 0, 0, 0);
+      const bDateTime = bDateMidnight.getTime();
+
+      const isActive = b.status !== 'Cancelado';
+      const isRevenueStatus = b.status === 'Confirmado' || b.status === 'Concluido';
+
+      // 1. Agendamentos Hoje
+      if (isActive && bDateTime === todayTime) {
+        bookingsToday++;
+      }
+
+      // 2. Agendamentos Semana
+      if (isActive && isSameWeek(bDateMidnight, today)) {
+        bookingsWeek++;
+      }
+
+      // 3. Receita Hoje
+      if (isRevenueStatus && bDateTime === todayTime) {
+        revenueToday += parsePrice(b.servicePrice);
+      }
+
+      // 4. Receita Semana
+      if (isRevenueStatus && isSameWeek(bDateMidnight, today)) {
+        revenueWeek += parsePrice(b.servicePrice);
+      }
+
+      // 5. Pendentes (Today or future appointments with status 'Confirmado')
+      if (b.status === 'Confirmado' && bDateTime >= todayTime) {
+        pendingCount++;
       }
     });
 
     // Populate dashboard labels
-    $('dashboard-monthly-revenue').textContent = formatCurrency(monthlyRevenue);
-    $('dashboard-daily-revenue').textContent = formatCurrency(dailyRevenue);
-    $('dashboard-total-bookings').textContent = totalBookings;
-    $('dashboard-total-clients').textContent = uniquePhones.size;
-    
-    // Trends text updates
-    const activeThisMonth = state.bookings.filter(b => {
-      const bDate = parseLocalDate(b.date);
-      return bDate.getMonth() === currentMonth && bDate.getFullYear() === currentYear;
-    }).length;
-    $('trend-bookings').textContent = `+${activeThisMonth} este mês`;
+    if ($('db-metric-today-count')) $('db-metric-today-count').textContent = bookingsToday;
+    if ($('db-metric-week-count')) $('db-metric-week-count').textContent = bookingsWeek;
+    if ($('db-metric-clients-count')) $('db-metric-clients-count').textContent = totalClients;
+    if ($('db-metric-today-revenue')) $('db-metric-today-revenue').textContent = formatCurrency(revenueToday);
+    if ($('db-metric-week-revenue')) $('db-metric-week-revenue').textContent = formatCurrency(revenueWeek);
+    if ($('db-metric-pending-count')) $('db-metric-pending-count').textContent = pendingCount;
 
-    // 2. Render Weekly Chart
-    renderWeeklyChart();
+    // Render Upcoming Bookings list
+    const upcomingList = $('dashboard-upcoming-list');
+    if (upcomingList) {
+      upcomingList.innerHTML = '';
 
-    // 3. Render Popular Services
-    renderPopularServices();
-
-    // 4. Render Recent Bookings Table
-    renderRecentBookingsTable();
-  }
-
-  function renderWeeklyChart() {
-    const container = $('weekly-chart-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    // Calculate billing per weekday for last 7 days
-    const weekDaysShort = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-    const daysData = [];
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dStr = d.toDateString();
-      
-      let total = 0;
-      state.bookings.forEach(b => {
-        if (parseLocalDate(b.date).toDateString() === dStr && (b.status === 'Confirmado' || b.status === 'Concluido')) {
-          total += parsePrice(b.servicePrice);
-        }
+      // Filter upcoming: Today or future appointments with status 'Confirmado'
+      const upcomingBookings = state.bookings.filter(b => {
+        if (b.status !== 'Confirmado' || !b.date) return false;
+        const bDate = parseLocalDate(b.date);
+        bDate.setHours(0, 0, 0, 0);
+        return bDate.getTime() >= todayTime;
       });
 
-      daysData.push({
-        label: weekDaysShort[d.getDay()],
-        val: total,
-        dateStr: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      // Sort upcoming chronologically (closest first)
+      upcomingBookings.sort((a, b) => {
+        const dateA = parseLocalDate(a.date);
+        const [hoursA, minsA] = a.time.split(':').map(Number);
+        dateA.setHours(hoursA, minsA, 0, 0);
+
+        const dateB = parseLocalDate(b.date);
+        const [hoursB, minsB] = b.time.split(':').map(Number);
+        dateB.setHours(hoursB, minsB, 0, 0);
+
+        return dateA.getTime() - dateB.getTime();
       });
-    }
 
-    // Determine max value for scale
-    const maxVal = Math.max(...daysData.map(d => d.val), 50); // Min scale is R$ 50
+      if (upcomingBookings.length === 0) {
+        upcomingList.innerHTML = '<div class="no-bookings" style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">Nenhum agendamento pendente.</div>';
+      } else {
+        upcomingBookings.forEach(b => {
+          const bDate = parseLocalDate(b.date);
+          const dateFormatted = bDate.toDateString() === todayStr
+            ? 'Hoje'
+            : `${String(bDate.getDate()).padStart(2, '0')}/${String(bDate.getMonth() + 1).padStart(2, '0')}`;
 
-    daysData.forEach(day => {
-      const pct = (day.val / maxVal) * 100;
-      
-      const barWrap = document.createElement('div');
-      barWrap.className = 'chart-bar-wrap';
-      
-      barWrap.innerHTML = `
-        <div class="chart-bar-fill" style="height: ${pct}%;">
-          <div class="chart-bar-tooltip">R$ ${day.val.toFixed(2)} (${day.dateStr})</div>
-        </div>
-        <div class="chart-label">${day.label}</div>
-      `;
-      
-      container.appendChild(barWrap);
-    });
-  }
+          const itemEl = document.createElement('div');
+          itemEl.className = 'db-upcoming-item';
+          itemEl.innerHTML = `
+            <div class="upcoming-time-badge">
+              <span class="upcoming-time">${b.time}</span>
+              <span class="upcoming-date">${dateFormatted}</span>
+            </div>
+            <div class="upcoming-details">
+              <div class="upcoming-client-name">${b.clientName}</div>
+              <div class="upcoming-service-meta">${b.serviceName} • 💈 ${b.professional || 'César'}</div>
+            </div>
+            <div class="upcoming-actions">
+              <button class="btn-action-icon conclude-btn" data-id="${b.id}" title="Concluir Agendamento">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px; color: var(--color-green);">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
+              <button class="btn-action-icon cancel-btn" data-id="${b.id}" title="Cancelar Agendamento">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--color-red);">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          `;
 
-  function renderPopularServices() {
-    const container = $('popular-services-list');
-    if (!container) return;
-    container.innerHTML = '';
+          // Action clicks
+          itemEl.querySelector('.conclude-btn').onclick = () => {
+            handleStatusChange(b.id, 'Concluir');
+          };
+          itemEl.querySelector('.cancel-btn').onclick = () => {
+            handleStatusChange(b.id, 'Cancelar');
+          };
 
-    const counts = {};
-    state.bookings.forEach(b => {
-      if (b.status !== 'Cancelado') {
-        counts[b.serviceName] = (counts[b.serviceName] || 0) + 1;
+          upcomingList.appendChild(itemEl);
+        });
       }
-    });
-
-    // Transform to array
-    const sorted = Object.keys(counts).map(name => ({
-      name,
-      count: counts[name]
-    })).sort((a, b) => b.count - a.count).slice(0, 5); // top 5
-
-    if (sorted.length === 0) {
-      container.innerHTML = '<p class="status-hint" style="text-align:center;padding:20px 0;">Nenhum serviço agendado ainda.</p>';
-      return;
     }
-
-    const maxCount = Math.max(...sorted.map(s => s.count), 1);
-
-    sorted.forEach(item => {
-      const pct = (item.count / maxCount) * 100;
-      
-      const el = document.createElement('div');
-      el.className = 'popular-item';
-      
-      el.innerHTML = `
-        <div class="popular-item-info">
-          <span class="popular-item-name">${item.name}</span>
-          <span class="popular-item-count">${item.count} agend.</span>
-        </div>
-        <div class="popular-bar-track">
-          <div class="popular-bar-fill" style="width: ${pct}%;"></div>
-        </div>
-      `;
-      
-      container.appendChild(el);
-    });
-  }
-
-  function renderRecentBookingsTable() {
-    const tbody = $('dashboard-recent-bookings-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    // Sort by creation date or date desc, take 5
-    const recent = [...state.bookings]
-      .sort((a, b) => parseLocalDate(b.createdAt || b.date).getTime() - parseLocalDate(a.createdAt || a.date).getTime())
-      .slice(0, 5);
-
-    if (recent.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum agendamento recente.</td></tr>';
-      return;
-    }
-
-    recent.forEach(b => {
-      const tr = document.createElement('tr');
-      const bDate = parseLocalDate(b.date);
-      const dateFormatted = `${String(bDate.getDate()).padStart(2,'0')}/${String(bDate.getMonth()+1).padStart(2,'0')} - ${b.time}`;
-      
-      tr.innerHTML = `
-        <td data-label="Cliente">
-          <div class="cell-user-info">
-            <span class="cell-user-name">${b.clientName}</span>
-            <span class="cell-user-phone">${b.clientPhone}</span>
-          </div>
-        </td>
-        <td data-label="Serviço">${b.serviceName}</td>
-        <td data-label="Data & Horário">${dateFormatted}</td>
-        <td data-label="Profissional">${b.professional || 'César'}</td>
-        <td data-label="Status"><span class="badge-status ${b.status.toLowerCase()}">${b.status}</span></td>
-        <td data-label="Ações" style="text-align: right;">
-          <button class="btn-text-link whatsapp" data-phone="${b.clientPhone}" data-name="${b.clientName}" data-service="${b.serviceName}" data-date="${bDate.toLocaleDateString('pt-BR')}" data-time="${b.time}">WhatsApp</button>
-        </td>
-      `;
-
-      // Whatsapp click
-      tr.querySelector('.whatsapp').addEventListener('click', (e) => {
-        e.stopPropagation();
-        openWhatsappOwnerMsg(e.target.dataset);
-      });
-
-      tbody.appendChild(tr);
-    });
-
-    $('btn-dashboard-view-all').onclick = () => {
-      // Toggle to calendar tab
-      $('btn-tab-calendar').click();
-    };
   }
 
   function openWhatsappOwnerMsg(data) {
