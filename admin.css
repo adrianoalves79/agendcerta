@@ -1919,7 +1919,8 @@ select option {
   }
 
   .admin-content {
-    padding: 20px;
+    padding: 16px;
+    overflow: hidden;
   }
 
   /* Grid Adjustments */
@@ -2181,6 +2182,12 @@ select option {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
   gap: 24px;
+  min-width: 0;
+}
+
+.dashboard-rows-grid > * {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dashboard-upcoming-box {
@@ -2375,6 +2382,8 @@ select option {
   }
   .quick-action-btn {
     padding: 16px 10px;
+    min-width: 0;
+    width: 100%;
   }
   .quick-action-btn svg {
     width: 24px;
@@ -2384,6 +2393,7 @@ select option {
     font-size: 11px;
     white-space: normal;
     line-height: 1.2;
+    word-break: break-word;
   }
   .dashboard-link-card {
     flex-direction: column;
@@ -2395,6 +2405,33 @@ select option {
   }
   .link-card-actions button {
     flex-grow: 1;
+  }
+  /* Fix upcoming appointment card overflow on mobile */
+  .db-upcoming-item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .upcoming-details {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .upcoming-client-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .upcoming-actions {
+    flex-shrink: 0;
+  }
+  /* Ensure report-box / dashboard boxes don't overflow */
+  .report-box {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .dashboard-upcoming-list {
+    max-height: none;
   }
 }
 
