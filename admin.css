@@ -3348,3 +3348,65 @@ select option {
   color: var(--gold);
 }
 
+/* Upcoming Dropdown Actions */
+.actions-dropdown {
+  position: fixed;
+  z-index: 999999;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 8px;
+  gap: 6px;
+}
+
+.actions-dropdown.hidden {
+  display: none;
+}
+
+.dropdown-item {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item.conclude {
+  background-color: rgba(48, 209, 88, 0.1);
+  border-color: rgba(48, 209, 88, 0.2);
+  color: var(--color-green);
+}
+.dropdown-item.conclude:hover {
+  background-color: rgba(48, 209, 88, 0.2);
+  border-color: rgba(48, 209, 88, 0.4);
+}
+
+.dropdown-item.pending {
+  background-color: rgba(255, 214, 10, 0.1);
+  border-color: rgba(255, 214, 10, 0.2);
+  color: var(--color-yellow);
+}
+.dropdown-item.pending:hover {
+  background-color: rgba(255, 214, 10, 0.2);
+  border-color: rgba(255, 214, 10, 0.4);
+}
+
+.dropdown-item.cancel {
+  background-color: rgba(255, 69, 58, 0.1);
+  border-color: rgba(255, 69, 58, 0.2);
+  color: var(--color-red);
+}
+.dropdown-item.cancel:hover {
+  background-color: rgba(255, 69, 58, 0.2);
+  border-color: rgba(255, 69, 58, 0.4);
+}
+
+

@@ -176,6 +176,62 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initial Render
     renderAll();
+
+    // Setup automatic queue updates every 30 seconds
+    setInterval(() => {
+      if (state.currentTab === 'tab-dashboard') {
+        renderDashboard();
+      }
+    }, 30000);
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', () => {
+      const dd = document.getElementById('global-actions-dropdown');
+      if (dd) dd.classList.add('hidden');
+    });
+
+    // Create the global dropdown menu and append to body
+    createGlobalActionsDropdown();
+  }
+
+  function createGlobalActionsDropdown() {
+    if (document.getElementById('global-actions-dropdown')) return;
+
+    const globalDropdown = document.createElement('div');
+    globalDropdown.className = 'actions-dropdown hidden';
+    globalDropdown.id = 'global-actions-dropdown';
+    globalDropdown.innerHTML = `
+      <button class="dropdown-item conclude">Concluído</button>
+      <button class="dropdown-item pending">Pendente</button>
+      <button class="dropdown-item cancel">Cancelado</button>
+    `;
+    document.body.appendChild(globalDropdown);
+
+    globalDropdown.querySelector('.conclude').onclick = (e) => {
+      e.stopPropagation();
+      const id = globalDropdown.dataset.id;
+      globalDropdown.classList.add('hidden');
+      handleStatusChange(id, 'Concluído');
+    };
+    globalDropdown.querySelector('.pending').onclick = (e) => {
+      e.stopPropagation();
+      const id = globalDropdown.dataset.id;
+      globalDropdown.classList.add('hidden');
+      handleStatusChange(id, 'Pendente');
+    };
+    globalDropdown.querySelector('.cancel').onclick = (e) => {
+      e.stopPropagation();
+      const id = globalDropdown.dataset.id;
+      globalDropdown.classList.add('hidden');
+      handleStatusChange(id, 'Cancelado');
+    };
+
+    // Close global dropdown when the upcoming list is scrolled
+    document.addEventListener('scroll', (e) => {
+      if (e.target && e.target.id === 'dashboard-upcoming-list') {
+        globalDropdown.classList.add('hidden');
+      }
+    }, true); // Use capture phase because scroll events do not bubble
   }
 
   async function loadDatabase() {
@@ -761,25 +817,39 @@ document.addEventListener('DOMContentLoaded', () => {
       upcomingList.innerHTML = '';
 
       // Filter upcoming: Today or future appointments with status 'Confirmado'
-      const upcomingBookings = state.bookings.filter(b => {
+      const eligibleBookings = state.bookings.filter(b => {
         if (b.status !== 'Confirmado' || !b.date) return false;
         const bDate = parseLocalDate(b.date);
         bDate.setHours(0, 0, 0, 0);
         return bDate.getTime() >= todayTime;
       });
 
-      // Sort upcoming chronologically (closest first)
-      upcomingBookings.sort((a, b) => {
-        const dateA = parseLocalDate(a.date);
-        const [hoursA, minsA] = a.time.split(':').map(Number);
-        dateA.setHours(hoursA, minsA, 0, 0);
-
-        const dateB = parseLocalDate(b.date);
-        const [hoursB, minsB] = b.time.split(':').map(Number);
-        dateB.setHours(hoursB, minsB, 0, 0);
-
-        return dateA.getTime() - dateB.getTime();
+      // Calculate start timestamp for each eligible booking
+      const bookingsWithTime = eligibleBookings.map(b => {
+        const bStart = parseLocalDate(b.date);
+        const [hours, mins] = b.time.split(':').map(Number);
+        bStart.setHours(hours, mins, 0, 0);
+        return { booking: b, startTime: bStart.getTime() };
       });
+
+      const nowMs = new Date().getTime();
+
+      // Find the start time of the latest appointment that has already started (current active appointment)
+      const pastOrPresent = bookingsWithTime.filter(item => item.startTime <= nowMs);
+      const maxPastStartTime = pastOrPresent.length > 0
+        ? Math.max(...pastOrPresent.map(item => item.startTime))
+        : -1;
+
+      // Filter: Keep future appointments OR the current active appointments
+      const filteredBookings = bookingsWithTime.filter(item => {
+        return item.startTime > nowMs || item.startTime === maxPastStartTime;
+      });
+
+      // Sort chronologically (closest first)
+      filteredBookings.sort((a, b) => a.startTime - b.startTime);
+
+      // Slice to max 5 items
+      const upcomingBookings = filteredBookings.map(item => item.booking).slice(0, 5);
 
       if (upcomingBookings.length === 0) {
         upcomingList.innerHTML = '<div class="no-bookings" style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">Nenhum agendamento pendente.</div>';
@@ -802,26 +872,45 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="upcoming-service-meta">${b.serviceName} • 💈 ${b.professional || 'César'}</div>
             </div>
             <div class="upcoming-actions">
-              <button class="btn-action-icon conclude-btn" data-id="${b.id}" title="Concluir Agendamento">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px; color: var(--color-green);">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </button>
-              <button class="btn-action-icon cancel-btn" data-id="${b.id}" title="Cancelar Agendamento">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--color-red);">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
+              <button class="btn-action-icon menu-trigger-btn" data-id="${b.id}" title="Ações">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px;">
+                  <circle cx="12" cy="6" r="1.5" />
+                  <circle cx="12" cy="12" r="1.5" />
+                  <circle cx="12" cy="18" r="1.5" />
                 </svg>
               </button>
             </div>
           `;
 
-          // Action clicks
-          itemEl.querySelector('.conclude-btn').onclick = () => {
-            handleStatusChange(b.id, 'Concluir');
-          };
-          itemEl.querySelector('.cancel-btn').onclick = () => {
-            handleStatusChange(b.id, 'Cancelar');
+          // Dropdown toggle click
+          const triggerBtn = itemEl.querySelector('.menu-trigger-btn');
+
+          triggerBtn.onclick = (e) => {
+            e.stopPropagation();
+            
+            const globalDropdown = document.getElementById('global-actions-dropdown');
+            if (!globalDropdown) return;
+
+            // Toggle off if same trigger clicked again
+            if (globalDropdown.dataset.id === b.id && !globalDropdown.classList.contains('hidden')) {
+              globalDropdown.classList.add('hidden');
+              return;
+            }
+
+            globalDropdown.dataset.id = b.id;
+            globalDropdown.classList.remove('hidden');
+
+            // Position it to the left of the ⋮ trigger button
+            const rect = triggerBtn.getBoundingClientRect();
+            const dropdownWidth = globalDropdown.offsetWidth || 120;
+            const dropdownHeight = globalDropdown.offsetHeight || 132;
+
+            const left = rect.left - dropdownWidth - 8;
+            const top = rect.top + (rect.height / 10) - (dropdownHeight / 1.8);
+
+            globalDropdown.style.left = `${left}px`;
+            globalDropdown.style.top = `${top}px`;
+            globalDropdown.style.position = 'fixed';
           };
 
           upcomingList.appendChild(itemEl);
@@ -1083,14 +1172,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'Confirmar') {
       newStatus = 'Confirmado';
       showToast("Agendamento Confirmado", `Horário de ${item.clientName} às ${item.time} foi confirmado.`);
-    } else if (action === 'Concluir') {
+    } else if (action === 'Concluir' || action === 'Concluído') {
       newStatus = 'Concluido';
       
       // Auto register stamp in CRM fidelidade
       triggerFidelidadeStampAuto(item.clientPhone);
 
       showToast("Agendamento Concluído", `Corte de ${item.clientName} concluído com sucesso. Selo adicionado!`);
-    } else if (action === 'Recusar' || action === 'Cancelar' || action === 'Desbloquear') {
+    } else if (action === 'Pendente') {
+      newStatus = 'Pendente';
+      showToast("Agendamento Pendente", `Horário de ${item.clientName} às ${item.time} foi marcado como Pendente.`);
+    } else if (action === 'Recusar' || action === 'Cancelar' || action === 'Cancelado' || action === 'Desbloquear') {
       newStatus = 'Cancelado';
       const isBlock = item.serviceId === 'bloqueio' || item.clientName === 'Horário Bloqueado';
       if (isBlock) {
