@@ -74,13 +74,85 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  function lightenDarkenColor(col, amt) {
+    if (!col || col[0] !== '#') return col;
+    try {
+      let usePound = true;
+      col = col.slice(1);
+      let num = parseInt(col, 16);
+      let r = (num >> 16) + amt;
+      if (r > 255) r = 255;
+      else if (r < 0) r = 0;
+      let g = ((num >> 8) & 0x00FF) + amt;
+      if (g > 255) g = 255;
+      else if (g < 0) g = 0;
+      let b = (num & 0x0000FF) + amt;
+      if (b > 255) b = 255;
+      else if (b < 0) b = 0;
+      return "#" + (b | (g << 8) | (r << 16)).toString(16).padStart(6, '0');
+    } catch(e) {
+      return "#" + col;
+    }
+  }
+
   function applyTheme(themeKey) {
-    const t = themes[themeKey] || themes.gold;
+    let t = themes.gold;
+    let customProfile = null;
+    let customCover = null;
+    
+    try {
+      if (themeKey && themeKey.startsWith('{')) {
+        const themeConfig = JSON.parse(themeKey);
+        t = {
+          primary: themeConfig.borderColor || '#C8922A',
+          light: themeConfig.borderColor || '#E0A83A',
+          gradient: `linear-gradient(135deg, ${themeConfig.borderColor || '#E0A83A'} 0%, ${themeConfig.borderColor || '#B8801A'} 100%)`,
+          border: themeConfig.borderColor || 'rgba(200, 146, 42, 0.2)',
+          borderCard: themeConfig.borderColor || 'rgba(200, 146, 42, 0.25)',
+          text: themeConfig.textColor || '#FFFFFF',
+          bg: themeConfig.bgColor || '#030304'
+        };
+        customProfile = themeConfig.profileImg;
+        customCover = themeConfig.coverImg;
+      } else {
+        t = themes[themeKey] || themes.gold;
+      }
+    } catch (e) {
+      console.error("Error parsing theme JSON:", e);
+      t = themes[themeKey] || themes.gold;
+    }
+
     document.documentElement.style.setProperty('--gold', t.primary);
-    document.documentElement.style.setProperty('--gold-light', t.light);
-    document.documentElement.style.setProperty('--gold-gradient', t.gradient);
-    document.documentElement.style.setProperty('--border', t.border);
-    document.documentElement.style.setProperty('--border-card', t.borderCard);
+    document.documentElement.style.setProperty('--gold-light', t.light || t.primary);
+    document.documentElement.style.setProperty('--gold-gradient', t.gradient || `linear-gradient(135deg, ${t.primary} 0%, ${t.primary} 100%)`);
+    document.documentElement.style.setProperty('--border', t.border || 'rgba(255,255,255,0.1)');
+    document.documentElement.style.setProperty('--border-card', t.borderCard || 'rgba(255,255,255,0.12)');
+
+    if (t.text) {
+      document.documentElement.style.setProperty('--text', t.text);
+    }
+    if (t.bg) {
+      document.documentElement.style.setProperty('--bg', t.bg);
+      document.documentElement.style.setProperty('--bg-card', lightenDarkenColor(t.bg, 8));
+      document.documentElement.style.setProperty('--bg-input', lightenDarkenColor(t.bg, 14));
+      document.documentElement.style.setProperty('--bg-sidebar', lightenDarkenColor(t.bg, 3));
+    } else {
+      document.documentElement.style.removeProperty('--text');
+      document.documentElement.style.removeProperty('--bg');
+      document.documentElement.style.removeProperty('--bg-card');
+      document.documentElement.style.removeProperty('--bg-input');
+      document.documentElement.style.removeProperty('--bg-sidebar');
+    }
+
+    if (customProfile) {
+      document.querySelectorAll('.profile-avatar, .settings-profile-avatar').forEach(img => {
+        img.src = customProfile;
+      });
+    } else {
+      document.querySelectorAll('.profile-avatar, .settings-profile-avatar').forEach(img => {
+        img.src = './imagens_hero/cesar.webp';
+      });
+    }
   }
 
   // ── Bootstrapping & Initial Loading ──────────────────────────────────────
@@ -122,6 +194,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (state.professionals.length === 0) {
       state.professionals = [...defaultProfessionals];
+    }
+
+    // Garantir que o serviço interno de bloqueio está inserido no banco para não violar a chave estrangeira
+    const hasBloqueio = state.services.some(s => s.id === 'bloqueio');
+    if (!hasBloqueio) {
+      const bloqueioService = {
+        id: 'bloqueio',
+        name: 'Bloqueio de Agenda',
+        price: 'R$ 0,00',
+        duration: '60 min',
+        img: ''
+      };
+      state.services.push(bloqueioService);
+      supabase.from('servicos').insert([bloqueioService]).then(({ error }) => {
+        if (error) {
+          console.error("Erro ao registrar serviço de bloqueio no Supabase:", error);
+        }
+      });
     }
 
     if (!configData) {
@@ -292,7 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── UI Modal Manager ─────────────────────────────────────────────────────
   function setupModals() {
     // Open selectors
-    $('btn-manual-booking').addEventListener('click', () => openModal('modal-manual-booking'));
     $('btn-add-service').addEventListener('click', () => {
       $('modal-service-title').textContent = "Adicionar Novo Serviço";
       $('service-edit-id').value = "";
@@ -349,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     
     container.appendChild(toast);
-    playChime();
+    playNotificationSound();
     
     // Auto dismiss
     setTimeout(() => {
@@ -360,33 +449,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 5000);
   }
 
-  // Synthesize beautiful luxurious chime sound programmatically
-  function playChime() {
+  // Synthesize beautiful notification sounds programmatically
+  function playNotificationSound(forcePlay = false) {
+    const isEnabled = localStorage.getItem('cesar_notif_enabled') !== 'false';
+    if (!isEnabled && !forcePlay) return;
+
+    const soundType = localStorage.getItem('cesar_notif_sound') || 'chime';
+
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
       
-      osc1.type = 'sine';
-      osc2.type = 'triangle';
-      
-      // Elegant bell chime sound: Chord E5 (659.25Hz) and G#5 (830.61Hz)
-      osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
-      osc2.frequency.setValueAtTime(830.61, ctx.currentTime);
-      
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
-      
+      const t = ctx.currentTime;
+      gain.connect(ctx.destination);
       osc1.connect(gain);
       osc2.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc1.start();
-      osc2.start();
-      osc1.stop(ctx.currentTime + 1.2);
-      osc2.stop(ctx.currentTime + 1.2);
+
+      if (soundType === 'chime') {
+        osc1.type = 'sine'; osc2.type = 'triangle';
+        osc1.frequency.setValueAtTime(659.25, t); // E5
+        osc2.frequency.setValueAtTime(830.61, t); // G#5
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.12, t + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+        osc1.start(t); osc2.start(t);
+        osc1.stop(t + 1.2); osc2.stop(t + 1.2);
+      } else if (soundType === 'bell') {
+        osc1.type = 'sine'; osc2.type = 'sine';
+        osc1.frequency.setValueAtTime(1046.50, t); // C6
+        osc2.frequency.setValueAtTime(1318.51, t); // E6
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.15, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.5);
+        osc1.start(t); osc2.start(t);
+        osc1.stop(t + 1.5); osc2.stop(t + 1.5);
+      } else if (soundType === 'retro') {
+        osc1.type = 'square'; osc2.type = 'square';
+        osc1.frequency.setValueAtTime(440, t); // A4
+        osc2.frequency.setValueAtTime(880, t); // A5
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.setValueAtTime(0.05, t);
+        gain.gain.setValueAtTime(0, t + 0.1);
+        gain.gain.setValueAtTime(0.05, t + 0.15);
+        gain.gain.setValueAtTime(0, t + 0.25);
+        osc1.start(t); osc2.start(t);
+        osc1.stop(t + 0.3); osc2.stop(t + 0.3);
+      } else if (soundType === 'digital') {
+        osc1.type = 'sawtooth'; osc2.type = 'sine';
+        osc1.frequency.setValueAtTime(800, t);
+        osc1.frequency.linearRampToValueAtTime(1200, t + 0.1);
+        osc2.frequency.setValueAtTime(1200, t);
+        osc2.frequency.linearRampToValueAtTime(1600, t + 0.1);
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.08, t + 0.05);
+        gain.gain.linearRampToValueAtTime(0, t + 0.2);
+        osc1.start(t); osc2.start(t);
+        osc1.stop(t + 0.2); osc2.stop(t + 0.2);
+      }
     } catch (e) {
       console.warn("AudioContext blocked by browser policy or unsupported:", e);
     }
@@ -520,28 +641,10 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    // Quick actions binding
-    const qaNewBooking = $('qa-new-booking');
-    if (qaNewBooking) {
-      qaNewBooking.onclick = () => {
-        $('btn-manual-booking').click();
-      };
-    }
-
     const qaNewClient = $('qa-new-client');
     if (qaNewClient) {
       qaNewClient.onclick = () => {
         $('btn-tab-crm').click();
-      };
-    }
-
-    const qaBlockTime = $('qa-block-time');
-    if (qaBlockTime) {
-      qaBlockTime.onclick = () => {
-        openModal('modal-manual-booking');
-        $('manual-client-name').value = "Horário Bloqueado";
-        $('manual-client-phone').value = "(00) 00000-0000";
-        $('manual-obs').value = "Bloqueio manual de agenda.";
       };
     }
 
@@ -1023,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fill services select options
     function populateServicesSelect() {
       select.innerHTML = '';
-      state.services.forEach(s => {
+      state.services.filter(s => s.id !== 'bloqueio').forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.id;
         opt.textContent = `${s.name} (${s.price})`;
@@ -1125,12 +1228,112 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Modal click trigger should populate select options
-    $('btn-manual-booking').addEventListener('click', () => {
+    // Dedicated function to open modal in either Manual Booking or Block Time mode
+    function openManualBookingModal(isBlockMode = false) {
+      const titleEl = $q('#modal-manual-booking h2');
+      const submitBtn = $q('#form-manual-booking button[type="submit"]');
+      
+      const nameInput = $('manual-client-name');
+      const phoneInput = $('manual-client-phone');
+      const serviceSelect = $('manual-service-select');
+      const obsInput = $('manual-obs');
+
+      // Get parent form-field-groups
+      const nameGroup = nameInput.closest('.form-field-group');
+      const phoneGroup = phoneInput.closest('.form-field-group');
+      const serviceGroup = serviceSelect.closest('.form-field-group');
+      const obsGroup = obsInput.closest('.form-field-group');
+
+      const allDayField = $('manual-field-allday');
+      const allDayCheck = $('manual-allday');
+      const timeSelect = $('manual-time');
+      const timeGroup = timeSelect.closest('.form-field-group');
+
+      if (isBlockMode) {
+        // Set titles
+        if (titleEl) titleEl.textContent = "Bloquear Horário";
+        if (submitBtn) submitBtn.textContent = "Bloquear Horário";
+
+        // Hide fields
+        nameGroup.classList.add('hidden');
+        phoneGroup.classList.add('hidden');
+        serviceGroup.classList.add('hidden');
+        obsGroup.classList.add('hidden');
+
+        // Show all day checkbox
+        if (allDayField) allDayField.classList.remove('hidden');
+        if (allDayCheck) allDayCheck.checked = false;
+
+        // Ensure time selector is visible and required by default
+        if (timeGroup) timeGroup.classList.remove('hidden');
+        timeSelect.required = true;
+
+        // Remove required attributes to prevent validation issues
+        nameInput.required = false;
+        phoneInput.required = false;
+        serviceSelect.required = false;
+
+        // Pre-fill values
+        nameInput.value = "Horário Bloqueado";
+        phoneInput.value = "(00) 00000-0000";
+        obsInput.value = "Bloqueio manual de agenda.";
+      } else {
+        // Set titles
+        if (titleEl) titleEl.textContent = "Novo Agendamento Manual";
+        if (submitBtn) submitBtn.textContent = "Criar Agendamento";
+
+        // Show fields
+        nameGroup.classList.remove('hidden');
+        phoneGroup.classList.remove('hidden');
+        serviceGroup.classList.remove('hidden');
+        obsGroup.classList.remove('hidden');
+
+        // Hide all day checkbox
+        if (allDayField) allDayField.classList.add('hidden');
+        if (allDayCheck) allDayCheck.checked = false;
+
+        // Show and set required for time select
+        if (timeGroup) timeGroup.classList.remove('hidden');
+        timeSelect.required = true;
+
+        // Add required attributes
+        nameInput.required = true;
+        phoneInput.required = true;
+        serviceSelect.required = true;
+
+        // Reset values
+        nameInput.value = "";
+        phoneInput.value = "";
+        obsInput.value = "";
+      }
+
+      // Populate select options
       populateServicesSelect();
       populateProfessionalsSelect();
       updateManualTimeSlots();
+
+      // Open the modal
+      openModal('modal-manual-booking');
+    }
+
+    // Modal click trigger should populate select options
+    $('btn-manual-booking').addEventListener('click', () => {
+      openManualBookingModal(false);
     });
+
+    const qaNewBooking = $('qa-new-booking');
+    if (qaNewBooking) {
+      qaNewBooking.onclick = () => {
+        openManualBookingModal(false);
+      };
+    }
+
+    const qaBlockTime = $('qa-block-time');
+    if (qaBlockTime) {
+      qaBlockTime.onclick = () => {
+        openManualBookingModal(true);
+      };
+    }
 
     // Set today as default date value
     $('manual-date').value = new Date().toISOString().split('T')[0];
@@ -1138,6 +1341,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Watch date and professional changes
     $('manual-date').addEventListener('change', updateManualTimeSlots);
     $('manual-prof-select').addEventListener('change', updateManualTimeSlots);
+
+    // Watch allday checkbox change
+    const allDayCheck = $('manual-allday');
+    if (allDayCheck) {
+      allDayCheck.addEventListener('change', (e) => {
+        const timeSelect = $('manual-time');
+        const timeGroup = timeSelect.closest('.form-field-group');
+        if (e.target.checked) {
+          if (timeGroup) timeGroup.classList.add('hidden');
+          timeSelect.required = false;
+        } else {
+          if (timeGroup) timeGroup.classList.remove('hidden');
+          timeSelect.required = true;
+        }
+      });
+    }
 
     $('form-manual-booking').onsubmit = async (e) => {
       e.preventDefault();
@@ -1149,6 +1368,140 @@ document.addEventListener('DOMContentLoaded', () => {
       const inputTime = $('manual-time').value;
       const inputProf = $('manual-prof-select').value;
       const inputDate = parseLocalDate(dVal);
+
+      const clientName = $('manual-client-name').value.trim();
+      const isBlock = clientName === "Horário Bloqueado";
+      const clientPhone = isBlock ? "(00) 00000-0000" : $('manual-client-phone').value.trim();
+      const clientObs = $('manual-obs').value.trim();
+
+      const finalServiceId = isBlock ? "bloqueio" : sId;
+      const finalServiceName = isBlock ? "Bloqueio de Agenda" : (service ? service.name : "Serviço");
+      const finalServicePrice = isBlock ? "R$ 0,00" : (service ? service.price : "R$ 0,00");
+      const finalServiceDuration = isBlock ? `${state.config.interval || 60} min` : (service ? service.duration : "60 min");
+
+      const allDayCheck = $('manual-allday');
+      const isAllDayBlock = isBlock && allDayCheck && allDayCheck.checked;
+
+      if (isAllDayBlock) {
+        // Verificar se existem agendamentos ativos de clientes neste dia
+        const activeClientBookings = state.bookings.filter(b => {
+          if (!b.date || b.status === 'Cancelado') return false;
+          const bookingDate = parseLocalDate(b.date);
+          const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+          return bookingDate.toDateString() === inputDate.toDateString() &&
+                 b.professional === inputProf &&
+                 !isBlockRecord;
+        });
+
+        if (activeClientBookings.length > 0) {
+          const confirmCancel = confirm(`Existem ${activeClientBookings.length} agendamento(s) ativo(s) de cliente(s) neste dia. Deseja cancelá-los automaticamente e prosseguir com o bloqueio?`);
+          if (!confirmCancel) return;
+
+          const bookingIdsToCancel = activeClientBookings.map(b => b.id);
+          try {
+            const { error: cancelError } = await supabase
+              .from('agendamentos')
+              .update({ status: 'Cancelado' })
+              .in('id', bookingIdsToCancel);
+
+            if (cancelError) throw cancelError;
+
+            // Atualizar estado local
+            activeClientBookings.forEach(b => b.status = 'Cancelado');
+          } catch (err) {
+            console.error("Erro ao cancelar agendamentos de cliente no Supabase:", err);
+            alert("Erro ao cancelar agendamentos existentes. Tente novamente.");
+            return;
+          }
+        }
+
+        // Gerar todos os slots de horário para o dia
+        const config = state.config || {};
+        const startHour = parseInt(config.timeStart ? config.timeStart.split(':')[0] : 9);
+        const endHour = parseInt(config.timeEnd ? config.timeEnd.split(':')[0] : 20);
+        const intervalMin = config.interval !== undefined ? config.interval : 60;
+        
+        const slots = [];
+        const current = new Date();
+        current.setHours(startHour, 0, 0, 0);
+        
+        const endLimit = new Date();
+        endLimit.setHours(endHour, 0, 0, 0);
+        
+        while (current < endLimit) {
+          const h = String(current.getHours()).padStart(2, '0');
+          const m = String(current.getMinutes()).padStart(2, '0');
+          const timeStr = `${h}:${m}`;
+          
+          if (current.getHours() !== 12) {
+            slots.push(timeStr);
+          }
+          
+          current.setMinutes(current.getMinutes() + intervalMin);
+        }
+        
+        if (slots.length === 0) {
+          slots.push("09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00");
+        }
+
+        // Filtrar horários que já estão bloqueados neste dia para evitar duplicidade
+        const blockedTimes = new Set(
+          state.bookings
+            .filter(b => {
+              if (!b.date || !b.time || b.status === 'Cancelado') return false;
+              const bookingDate = parseLocalDate(b.date);
+              const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+              return bookingDate.toDateString() === inputDate.toDateString() &&
+                     b.professional === inputProf &&
+                     isBlockRecord;
+            })
+            .map(b => b.time)
+        );
+
+        const slotsToBlock = slots.filter(t => !blockedTimes.has(t));
+
+        if (slotsToBlock.length === 0) {
+          showToast("Agenda Bloqueada", "Todos os horários deste dia já estão bloqueados.");
+          closeModal('modal-manual-booking');
+          $('form-manual-booking').reset();
+          return;
+        }
+
+        const blocksToInsert = slotsToBlock.map(t => ({
+          clientName: clientName,
+          clientPhone: clientPhone,
+          clientBirth: '',
+          clientObs: clientObs,
+          serviceId: finalServiceId,
+          serviceName: finalServiceName,
+          servicePrice: finalServicePrice,
+          serviceDuration: finalServiceDuration,
+          date: dVal, // YYYY-MM-DD
+          time: t,
+          professional: inputProf,
+          status: 'Confirmado'
+        }));
+
+        try {
+          const { error } = await supabase.from('agendamentos').insert(blocksToInsert);
+          if (error) throw error;
+          
+          showToast("Agenda Bloqueada", `Dia todo (${slotsToBlock.length} horários) bloqueado com sucesso para ${inputProf}.`);
+        } catch (err) {
+          console.error("Erro ao salvar bloqueio em lote:", err);
+          alert("Erro ao registrar bloqueio do dia todo. Tente novamente.");
+          return;
+        }
+
+        closeModal('modal-manual-booking');
+        $('form-manual-booking').reset();
+        
+        state.selectedDate = new Date(dVal);
+        state.pickerDate = new Date(dVal);
+
+        renderAll();
+        return;
+      }
 
       // Verificar colisão de horário para o barbeiro selecionado
       const hasCollision = state.bookings.some(b => {
@@ -1163,16 +1516,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const confirmOverbook = confirm(`Atenção: O profissional ${inputProf} já possui um agendamento ativo para às ${inputTime} no dia ${inputDate.toLocaleDateString('pt-BR')}.\nDeseja registrar o agendamento mesmo assim?`);
         if (!confirmOverbook) return;
       }
-
-      const clientName = $('manual-client-name').value.trim();
-      const isBlock = clientName === "Horário Bloqueado";
-      const clientPhone = isBlock ? "(00) 00000-0000" : $('manual-client-phone').value.trim();
-      const clientObs = $('manual-obs').value.trim();
-
-      const finalServiceId = isBlock ? "bloqueio" : sId;
-      const finalServiceName = isBlock ? "Bloqueio de Agenda" : (service ? service.name : "Serviço");
-      const finalServicePrice = isBlock ? "R$ 0,00" : (service ? service.price : "R$ 0,00");
-      const finalServiceDuration = isBlock ? `${state.config.interval || 60} min` : (service ? service.duration : "60 min");
 
       try {
         const { error } = await supabase.from('agendamentos').insert([{
@@ -1355,7 +1698,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!grid) return;
     grid.innerHTML = '';
 
-    state.services.forEach(s => {
+    state.services.filter(s => s.id !== 'bloqueio').forEach(s => {
       const card = document.createElement('div');
       card.className = 'service-admin-card';
       
@@ -1637,7 +1980,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (stamps < 10) {
         clientFidelidades[phone] = stamps + 1;
         localStorage.setItem('cesar_barbearia_fidelidades', JSON.stringify(clientFidelidades));
-        playChime();
+        playNotificationSound(true);
         renderStamps();
         renderCRMTab();
         showToast("Carimbo Adicionado", `Cartão fidelidade de ${name} carimbado.`);
@@ -1650,7 +1993,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clientFidelidades[phone] = 0; // reset
       localStorage.setItem('cesar_barbearia_fidelidades', JSON.stringify(clientFidelidades));
       
-      playChime();
+      playNotificationSound(true);
       renderStamps();
       renderCRMTab();
       
@@ -1672,10 +2015,201 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // ── TAB 5: CONFIGURAÇÕES E PERSONALIZAÇÃO (AGENDAI INSPIRED) ─────────────
+  // ── TAB 5: CONFIGURAÇÕES E PERSONALIZAÇÃO (Abas) ─────────────
   let selectedTheme = 'gold';
 
+  // Helper to place active panel in correct container depending on screen size
+  function adjustSettingsPanelPosition() {
+    const activePanel = document.querySelector('.settings-accordion-panel.open');
+    if (!activePanel) return;
+    
+    const activeTrigger = document.querySelector('.settings-item.accordion-active');
+    if (!activeTrigger) return;
+    
+    if (window.innerWidth <= 991) {
+      // Mobile: Move active panel below trigger button
+      if (activeTrigger.nextElementSibling !== activePanel) {
+        activeTrigger.after(activePanel);
+      }
+    } else {
+      // Desktop: Move active panel to right column
+      const contentColumn = document.querySelector('.settings-content-column');
+      if (contentColumn && activePanel.parentElement !== contentColumn) {
+        contentColumn.appendChild(activePanel);
+      }
+    }
+  }
+
+  // Monitor screen resize to shift panels if needed
+  window.addEventListener('resize', adjustSettingsPanelPosition);
+
+  // Helper: switch settings tab panel
+  function openSettingsPanel(panelId, triggerId) {
+    // Close all other panels
+    document.querySelectorAll('.settings-accordion-panel').forEach(p => {
+      if (p.id !== panelId) {
+        p.classList.remove('open');
+      }
+    });
+    document.querySelectorAll('.settings-item').forEach(btn => {
+      if (btn.id !== triggerId) {
+        btn.classList.remove('accordion-active');
+      }
+    });
+
+    const panel = $(panelId);
+    const trigger = $(triggerId);
+
+    if (panel) {
+      panel.classList.add('open');
+    }
+    if (trigger) {
+      trigger.classList.add('accordion-active');
+    }
+
+    // Move to correct position depending on responsive width
+    adjustSettingsPanelPosition();
+
+    // Scroll trigger into view on mobile so it is not cut off
+    if (window.innerWidth <= 991 && trigger) {
+      setTimeout(() => {
+        trigger.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    }
+  }
+
+  function closeSettingsPanel(panelId) {
+    const panel = $(panelId);
+    if (panel) panel.classList.remove('open');
+    document.querySelectorAll('.settings-item').forEach(btn => btn.classList.remove('accordion-active'));
+  }
+
+  // Helper: generate reports data
+  function generateReports(days = 7) {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    const cutoffDate = days === 'all' ? new Date(0) : new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+    cutoffDate.setHours(0, 0, 0, 0);
+    
+    let total = 0;
+    let concluido = 0;
+    let pendente = 0;
+    let falta = 0;
+    
+    let clientCounts = {};
+    let serviceCounts = {};
+
+    state.bookings.forEach(b => {
+      if (b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado') return;
+      
+      const bDate = parseLocalDate(b.date);
+      if (bDate >= cutoffDate) {
+        total++;
+        if (b.status === 'Concluido') concluido++;
+        else if (b.status === 'Cancelado') falta++;
+        else pendente++;
+        
+        if (b.clientName) {
+          clientCounts[b.clientName] = (clientCounts[b.clientName] || 0) + 1;
+        }
+        if (b.serviceName) {
+          serviceCounts[b.serviceName] = (serviceCounts[b.serviceName] || 0) + 1;
+        }
+      }
+    });
+
+    const elTotal = $('rep-val-total');
+    const elConcluidos = $('rep-val-concluidos');
+    const elPendentes = $('rep-val-pendentes');
+    const elFaltas = $('rep-val-faltas');
+
+    if (elTotal) elTotal.textContent = total;
+    if (elConcluidos) elConcluidos.innerHTML = `${concluido} <span style="font-size:14px;color:var(--text-muted)">/${total}</span>`;
+    if (elPendentes) elPendentes.textContent = pendente;
+    if (elFaltas) elFaltas.textContent = falta;
+
+    // Ranking Clients
+    const topClients = Object.entries(clientCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const rankingBox = $('rep-ranking-box');
+    if (rankingBox) {
+      if (topClients.length === 0) {
+        rankingBox.innerHTML = 'Nenhum cliente neste período';
+        rankingBox.className = 'reports-empty-box';
+      } else {
+        rankingBox.className = 'report-list-container';
+        rankingBox.innerHTML = topClients.map(([name, count]) => `
+          <div class="rep-rank-item">
+            <span class="name">${name}</span>
+            <span class="val">${count} agendamento${count > 1 ? 's' : ''}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Demanda Services
+    const topServices = Object.entries(serviceCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const demandaBox = $('rep-demanda-box');
+    if (demandaBox) {
+      if (topServices.length === 0) {
+        demandaBox.innerHTML = 'Nenhum serviço neste período';
+        demandaBox.className = 'reports-empty-box';
+      } else {
+        demandaBox.className = 'report-list-container';
+        demandaBox.innerHTML = topServices.map(([name, count]) => `
+          <div class="rep-rank-item">
+            <span class="name">${name}</span>
+            <span class="val">${count} vez${count > 1 ? 'es' : ''}</span>
+          </div>
+        `).join('');
+      }
+    }
+  }
+
   function setupSettingsAdmin() {
+    // Foto do Perfil Upload Trigger
+    const profileImgInput = $('set-profile-img-file');
+    const profileImgBtn = $('btn-upload-profile-img');
+    const profileImgPreview = $('set-profile-img-preview');
+    if (profileImgBtn && profileImgInput && profileImgPreview) {
+      profileImgBtn.addEventListener('click', () => profileImgInput.click());
+      profileImgInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 1024 * 1024) {
+            alert("A imagem é muito grande. O limite máximo é 1MB.");
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            profileImgPreview.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    // Foto da Capa Upload Trigger
+    const coverImgInput = $('set-cover-img-file');
+    const coverImgBtn = $('btn-upload-cover-img');
+    const coverImgPreview = $('set-cover-img-preview');
+    if (coverImgBtn && coverImgInput && coverImgPreview) {
+      coverImgBtn.addEventListener('click', () => coverImgInput.click());
+      coverImgInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (file.size > 1024 * 1024) {
+            alert("A imagem é muito grande. O limite máximo é 1MB.");
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            coverImgPreview.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
     // Theme options click handlers
     document.querySelectorAll('.btn-theme-selector').forEach(btn => {
       btn.onclick = () => {
@@ -1686,53 +2220,275 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
         selectedTheme = btn.dataset.color;
         
-        // Dynamic preview
-        const t = themes[selectedTheme] || themes.gold;
-        btn.style.borderColor = t.primary;
-        
-        applyTheme(selectedTheme);
-      };
-    });
-
-    $('form-settings').addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      // Read days checkboxes
-      const openDays = [];
-      for (let i = 0; i <= 6; i++) {
-        if ($(`set-day-${i}`).checked) {
-          openDays.push(i);
+        // Toggle Custom Colors container display
+        const customContainer = $('custom-colors-container');
+        if (selectedTheme === 'custom') {
+          customContainer.classList.remove('hidden');
+        } else {
+          customContainer.classList.add('hidden');
         }
-      }
-
-      const config = {
-        name: $('set-barber-name').value.trim(),
-        phone: $('set-barber-phone').value.trim(),
-        address: $('set-barber-address').value.trim(),
-        instagram: $('set-barber-instagram').value.trim(),
-        theme: selectedTheme,
-        openDays: openDays,
-        timeStart: $('set-time-start').value,
-        timeEnd: $('set-time-end').value,
-        interval: parseInt($('set-time-interval').value)
+        
+        // Dynamic preview
+        if (selectedTheme === 'custom') {
+          btn.style.borderColor = $('set-color-border').value;
+          const customThemeObj = {
+            theme: 'custom',
+            profileImg: $('set-profile-img-preview').src,
+            coverImg: $('set-cover-img-preview').src,
+            borderColor: $('set-color-border').value,
+            textColor: $('set-color-text').value,
+            bgColor: $('set-color-bg').value
+          };
+          applyTheme(JSON.stringify(customThemeObj));
+        } else {
+          const t = themes[selectedTheme] || themes.gold;
+          btn.style.borderColor = t.primary;
+          
+          const presetThemeObj = {
+            theme: selectedTheme,
+            profileImg: $('set-profile-img-preview').src,
+            coverImg: $('set-cover-img-preview').src,
+            borderColor: t.primary,
+            textColor: '#FFFFFF',
+            bgColor: '#030304'
+          };
+          applyTheme(JSON.stringify(presetThemeObj));
+        }
       };
-
-      localStorage.setItem('cesar_barbearia_configuracoes', JSON.stringify(config));
-      state.config = config;
-
-      // Update header elements
-      const titleEl = $q('.brand-info h2');
-      if (titleEl) {
-        titleEl.textContent = config.name;
-      }
-      
-      showToast("Configurações Salvas", "As preferências da barbearia foram atualizadas e sincronizadas com a página do cliente.");
-      
-      // Sync notifications
-      localStorage.setItem('cesar_barbearia_config_alterada', JSON.stringify({ timestamp: Date.now() }));
-      
-      renderAll();
     });
+
+    // Custom color inputs change handler
+    ['set-color-border', 'set-color-text', 'set-color-bg'].forEach(id => {
+      const el = $(id);
+      if (el) {
+        el.addEventListener('change', () => {
+          if (selectedTheme === 'custom') {
+            const btnCustom = document.querySelector('.btn-theme-selector[data-color="custom"]');
+            if (btnCustom) btnCustom.style.borderColor = $('set-color-border').value;
+            
+            const customThemeObj = {
+              theme: 'custom',
+              profileImg: $('set-profile-img-preview').src,
+              coverImg: $('set-cover-img-preview').src,
+              borderColor: $('set-color-border').value,
+              textColor: $('set-color-text').value,
+              bgColor: $('set-color-bg').value
+            };
+            applyTheme(JSON.stringify(customThemeObj));
+          }
+        });
+      }
+    });
+
+    // Submit do formulário de perfil (dentro do panel-profile)
+    const formProfile = $('form-config-profile');
+    if (formProfile) {
+      formProfile.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const config = state.config || {};
+        config.name = $('set-barber-name').value.trim();
+        config.phone = $('set-barber-phone').value.trim();
+        config.address = $('set-barber-address').value.trim();
+        config.instagram = $('set-barber-instagram').value.trim();
+
+        // Serialize theme with custom photos and colors
+        const profileImg = $('set-profile-img-preview').src;
+        const coverImg = $('set-cover-img-preview').src;
+        
+        const themeObj = {
+          theme: selectedTheme,
+          profileImg: profileImg,
+          coverImg: coverImg,
+          borderColor: selectedTheme === 'custom' ? $('set-color-border').value : (themes[selectedTheme] ? themes[selectedTheme].primary : '#C8922A'),
+          textColor: selectedTheme === 'custom' ? $('set-color-text').value : '#FFFFFF',
+          bgColor: selectedTheme === 'custom' ? $('set-color-bg').value : '#030304'
+        };
+        
+        config.theme = JSON.stringify(themeObj);
+
+        localStorage.setItem('cesar_barbearia_configuracoes', JSON.stringify(config));
+        state.config = config;
+
+        const titleEl = $q('.brand-info h2');
+        if (titleEl) titleEl.textContent = config.name;
+
+        applyTheme(config.theme);
+        
+        // Push update to Supabase
+        try {
+          const { error } = await supabase.from('configuracoes')
+            .update({
+              name: config.name,
+              phone: config.phone,
+              address: config.address,
+              instagram: config.instagram,
+              theme: config.theme
+            })
+            .eq('id', 'config_geral');
+          if (error) throw error;
+          showToast("Perfil Salvo", "As informações da barbearia foram atualizadas.");
+        } catch (err) {
+          console.error("Erro ao salvar perfil no Supabase:", err);
+          showToast("Salvo Localmente", "Atualizado com sucesso localmente, mas houve um erro ao enviar para o servidor.");
+        }
+
+        localStorage.setItem('cesar_barbearia_config_alterada', JSON.stringify({ timestamp: Date.now() }));
+        renderAll();
+      });
+    }
+
+    // Submit do formulário de horários (dentro do modal-config-hours)
+    const formHours = $('form-config-hours');
+    if (formHours) {
+      formHours.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const openDays = [];
+        for (let i = 0; i <= 6; i++) {
+          const cb = $(`set-day-${i}`);
+          if (cb && cb.checked) openDays.push(i);
+        }
+
+        const config = state.config || {};
+        config.openDays = openDays;
+        config.timeStart = $('set-time-start') ? $('set-time-start').value : config.timeStart;
+        config.timeEnd = $('set-time-end') ? $('set-time-end').value : config.timeEnd;
+        config.interval = $('set-time-interval') ? parseInt($('set-time-interval').value) : config.interval;
+
+        localStorage.setItem('cesar_barbearia_configuracoes', JSON.stringify(config));
+        state.config = config;
+
+        // Push update to Supabase
+        try {
+          const { error } = await supabase.from('configuracoes')
+            .update({
+              openDays: config.openDays,
+              timeStart: config.timeStart,
+              timeEnd: config.timeEnd,
+              interval: config.interval
+            })
+            .eq('id', 'config_geral');
+          if (error) throw error;
+          showToast("Horários Salvos", "Os horários de funcionamento foram atualizados.");
+        } catch (err) {
+          console.error("Erro ao salvar horários no Supabase:", err);
+          showToast("Salvo Localmente", "Atualizado com sucesso localmente, mas houve um erro ao enviar para o servidor.");
+        }
+
+        localStorage.setItem('cesar_barbearia_config_alterada', JSON.stringify({ timestamp: Date.now() }));
+        renderAll();
+      });
+    }
+
+    // Accordion panel bindings (replace modals)
+    const btnReports = $('set-item-reports');
+    if (btnReports) {
+      btnReports.onclick = () => {
+        openSettingsPanel('panel-reports', 'set-item-reports');
+        if ($('panel-reports').classList.contains('open')) {
+          generateReports(7);
+          document.querySelectorAll('.report-filter-pill').forEach(p => p.classList.remove('active'));
+          const defaultPill = document.querySelector('.report-filter-pill[data-days="7"]');
+          if (defaultPill) defaultPill.classList.add('active');
+        }
+      };
+    }
+
+    // Reports Pill Filters
+    document.querySelectorAll('.report-filter-pill').forEach(pill => {
+      pill.onclick = (e) => {
+        document.querySelectorAll('.report-filter-pill').forEach(p => p.classList.remove('active'));
+        e.target.classList.add('active');
+        const days = e.target.dataset.days;
+        generateReports(days === 'all' ? 'all' : parseInt(days));
+      };
+    });
+
+    const btnFinancial = $('set-item-financial');
+    if (btnFinancial) btnFinancial.onclick = () => openSettingsPanel('panel-financial', 'set-item-financial');
+
+    const btnFaq = $('set-item-faq');
+    if (btnFaq) btnFaq.onclick = () => openSettingsPanel('panel-faq', 'set-item-faq');
+
+    const btnProfile = $('set-item-profile');
+    if (btnProfile) btnProfile.onclick = () => openSettingsPanel('panel-profile', 'set-item-profile');
+
+    const btnHours = $('set-item-hours');
+    if (btnHours) btnHours.onclick = () => openSettingsPanel('panel-hours', 'set-item-hours');
+
+    const btnNotifications = $('set-item-notifications');
+    if (btnNotifications) btnNotifications.onclick = () => openSettingsPanel('panel-notifications', 'set-item-notifications');
+
+    const btnShare = $('set-item-share');
+    if (btnShare) btnShare.onclick = () => openSettingsPanel('panel-share', 'set-item-share');
+
+    // Copy link in settings
+    const btnSettingsCopy = $('set-item-copy-link');
+    if (btnSettingsCopy) {
+      btnSettingsCopy.onclick = () => {
+        const url = $('dashboard-booking-url') ? $('dashboard-booking-url').textContent : "https://agendcerta.vercel.app";
+        navigator.clipboard.writeText(url).then(() => {
+          showToast("Link Copiado", "O link de agendamento foi copiado para a área de transferência!");
+        }).catch(err => {
+          console.error("Could not copy: ", err);
+          const el = document.createElement('textarea');
+          el.value = url;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+          showToast("Link Copiado", "O link de agendamento foi copiado!");
+        });
+      };
+    }
+
+    // Share link in settings
+    const btnSettingsShare = $('set-item-share-link');
+    if (btnSettingsShare) {
+      btnSettingsShare.onclick = () => {
+        const url = $('dashboard-booking-url') ? $('dashboard-booking-url').textContent : "https://agendcerta.vercel.app";
+        if (navigator.share) {
+          navigator.share({
+            title: (state.config && state.config.name) || 'César Barbearia',
+            text: 'Agende seu horário online na César Barbearia!',
+            url: url
+          }).catch(err => console.log('Error sharing:', err));
+        } else {
+          navigator.clipboard.writeText(url).then(() => {
+            showToast("Compartilhar", "Link copiado! Envie para seus clientes.");
+          });
+        }
+      };
+    }
+
+    // Notification settings event listeners
+    const notifToggle = $('set-notif-sound-toggle');
+    const notifSelect = $('set-notif-sound-select');
+    const notifTestBtn = $('btn-test-notif-sound');
+
+    if (notifToggle) {
+      notifToggle.addEventListener('change', (e) => {
+        localStorage.setItem('cesar_notif_enabled', e.target.checked);
+        if (e.target.checked) playNotificationSound(true);
+      });
+    }
+
+    if (notifSelect) {
+      notifSelect.addEventListener('change', (e) => {
+        localStorage.setItem('cesar_notif_sound', e.target.value);
+        playNotificationSound(true);
+      });
+    }
+
+    if (notifTestBtn) {
+      notifTestBtn.addEventListener('click', () => {
+        if (notifSelect) {
+          localStorage.setItem('cesar_notif_sound', notifSelect.value);
+        }
+        playNotificationSound(true);
+      });
+    }
   }
 
   function renderSettingsTab() {
@@ -1756,18 +2512,78 @@ document.addEventListener('DOMContentLoaded', () => {
     $('set-time-end').value = config.timeEnd || "20:00";
     $('set-time-interval').value = config.interval !== undefined ? config.interval : 60;
 
+    // Load images previews and color inputs
+    const themeKey = config.theme;
+    let themeName = themeKey;
+    let customColors = null;
+    let profileSrc = './imagens_hero/cesar.webp';
+    let coverSrc = './imagens_hero/hero.png';
+    
+    if (themeKey && themeKey.startsWith('{')) {
+      try {
+        const themeConfig = JSON.parse(themeKey);
+        themeName = themeConfig.theme || 'custom';
+        profileSrc = themeConfig.profileImg || profileSrc;
+        coverSrc = themeConfig.coverImg || coverSrc;
+        customColors = {
+          border: themeConfig.borderColor || '#C8922A',
+          text: themeConfig.textColor || '#FFFFFF',
+          bg: themeConfig.bgColor || '#030304'
+        };
+      } catch (e) {
+        console.error("Error parsing theme JSON in render:", e);
+      }
+    }
+    
+    $('set-profile-img-preview').src = profileSrc;
+    $('set-cover-img-preview').src = coverSrc;
+    
+    selectedTheme = themeName || 'gold';
+    
     // Select color theme button
-    selectedTheme = config.theme || 'gold';
     document.querySelectorAll('.btn-theme-selector').forEach(btn => {
       if (btn.dataset.color === selectedTheme) {
         btn.classList.add('active');
-        const t = themes[selectedTheme];
+        const t = themes[selectedTheme] || { primary: (customColors ? customColors.border : '#C8922A') };
         btn.style.borderColor = t.primary;
       } else {
         btn.classList.remove('active');
         btn.style.borderColor = 'transparent';
       }
     });
+    
+    // Toggle Custom Colors container visibility
+    const colorsContainer = $('custom-colors-container');
+    if (selectedTheme === 'custom') {
+      colorsContainer.classList.remove('hidden');
+      if (customColors) {
+        $('set-color-border').value = customColors.border;
+        $('set-color-text').value = customColors.text;
+        $('set-color-bg').value = customColors.bg;
+      }
+    } else {
+      colorsContainer.classList.add('hidden');
+    }
+
+    // Load Notification settings
+    const notifToggle = $('set-notif-sound-toggle');
+    const notifSelect = $('set-notif-sound-select');
+    
+    if (notifToggle) {
+      notifToggle.checked = localStorage.getItem('cesar_notif_enabled') !== 'false';
+    }
+    
+    if (notifSelect) {
+      const soundType = localStorage.getItem('cesar_notif_sound') || 'chime';
+      notifSelect.value = soundType;
+    }
+
+    // Default settings tab (Reports) if none is currently active
+    const hasOpen = Array.from(document.querySelectorAll('.settings-accordion-panel')).some(p => p.classList.contains('open'));
+    if (!hasOpen) {
+      openSettingsPanel('panel-reports', 'set-item-reports');
+      generateReports(7);
+    }
   }
 
   // Initialize Panel

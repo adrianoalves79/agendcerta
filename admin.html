@@ -417,7 +417,7 @@
                     <th>WhatsApp</th>
                     <th>Data de Nasc.</th>
                     <th>Visitas Totais</th>
-                    <th>Último Agendamento</th>
+<th>Último Agendamento</th>
                     <th>Fidelidade (Cortes)</th>
                     <th style="text-align: right;">Ações</th>
                   </tr>
@@ -433,132 +433,416 @@
 
         <!-- ──────── TAB 5: CONFIGURAÇÕES ──────── -->
         <section class="tab-panel" id="tab-settings">
-          <form id="form-settings" class="section-row">
-            
-            <!-- Bloco 1: Perfil da Barbearia -->
-            <div class="services-admin-box" style="display:flex; flex-direction:column; gap:16px;">
-              <div class="box-header" style="margin-bottom:8px; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
-                <h2>Dados do Estabelecimento</h2>
-              </div>
-
-              <div class="form-field-group">
-                <label for="set-barber-name">Nome da Barbearia *</label>
-                <input type="text" id="set-barber-name" class="admin-input" placeholder="Ex: César Barbearia" required>
-              </div>
-
-              <div class="form-field-group">
-                <label for="set-barber-phone">WhatsApp de Destino *</label>
-                <input type="tel" id="set-barber-phone" class="admin-input" placeholder="(11) 99999-9999" required>
-                <span class="status-hint" style="color:var(--gold);">Altera o WhatsApp para onde as confirmações finais do agendamento dos clientes serão direcionadas.</span>
-              </div>
-
-              <div class="form-field-group">
-                <label for="set-barber-address">Endereço Completo</label>
-                <input type="text" id="set-barber-address" class="admin-input" placeholder="Ex: Praça Lucila Macedo Dêda, Simão Dias - SE">
-              </div>
-
-              <div class="form-field-group">
-                <label for="set-barber-instagram">Link do Instagram</label>
-                <input type="text" id="set-barber-instagram" class="admin-input" placeholder="Ex: @cesar.barbearia">
-              </div>
+          
+          <div class="settings-profile-card">
+            <img src="./imagens_hero/cesar.webp" alt="Avatar César" class="settings-profile-avatar" id="settings-avatar-img">
+            <div class="settings-profile-info">
+              <h3 id="settings-profile-name">César Barbearia</h3>
             </div>
-
-            <!-- Bloco 2: Regras da Agenda, Dias e Cores -->
-            <div class="professionals-admin-box" style="display:flex; flex-direction:column; gap:16px;">
-              <div class="box-header" style="margin-bottom:8px; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
-                <h2>Agenda & Customização</h2>
-              </div>
-
-              <!-- Checkboxes de Dias Abertos -->
-              <div class="form-field-group">
-                <label style="margin-bottom:6px;">Dias de Funcionamento</label>
-                <div class="days-checkboxes-grid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
-                  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;">
-                    <input type="checkbox" id="set-day-1" checked style="accent-color:var(--gold);"> Seg
-                  </label>
-                  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;">
-                    <input type="checkbox" id="set-day-2" checked style="accent-color:var(--gold);"> Ter
-                  </label>
-                  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;">
-                    <input type="checkbox" id="set-day-3" checked style="accent-color:var(--gold);"> Qua
-                  </label>
-                  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;">
-                    <input type="checkbox" id="set-day-4" checked style="accent-color:var(--gold);"> Qui
-                  </label>
-                  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;">
-                    <input type="checkbox" id="set-day-5" checked style="accent-color:var(--gold);"> Sex
-                  </label>
-                  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;">
-                    <input type="checkbox" id="set-day-6" checked style="accent-color:var(--gold);"> Sáb
-                  </label>
-                  <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;">
-                    <input type="checkbox" id="set-day-0" style="accent-color:var(--gold);"> Dom
-                  </label>
-                </div>
-                <span class="status-hint">Dias desmarcados serão automaticamente bloqueados para agendamento dos clientes.</span>
-              </div>
-
-              <!-- Expediente -->
-              <div class="form-row-2">
-                <div class="form-field-group">
-                  <label for="set-time-start">Abertura</label>
-                  <select id="set-time-start" class="admin-select">
-                    <option value="07:00">07:00</option>
-                    <option value="08:00">08:00</option>
-                    <option value="09:00" selected>09:00</option>
-                    <option value="10:00">10:00</option>
-                  </select>
-                </div>
-                <div class="form-field-group">
-                  <label for="set-time-end">Encerramento</label>
-                  <select id="set-time-end" class="admin-select">
-                    <option value="17:00">17:00</option>
-                    <option value="18:00">18:00</option>
-                    <option value="19:00">19:00</option>
-                    <option value="20:00" selected>20:00</option>
-                    <option value="21:00">21:00</option>
-                  </select>
+          </div>
+          
+          <div class="settings-grid">
+            
+            <!-- Coluna da Esquerda: Menu de Navegação (Abas) -->
+            <div class="settings-col">
+              
+              <div class="settings-section">
+                <h4>MEU NEGÓCIO</h4>
+                <div class="settings-list">
+                  
+                  <button class="settings-item" id="set-item-reports">
+                    <span class="settings-item-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    </span>
+                    <span class="settings-item-text">Relatório de Agendamentos</span>
+                    <span class="settings-item-chevron">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </span>
+                  </button>
+                  
+                  <button class="settings-item" id="set-item-financial">
+                    <span class="settings-item-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    </span>
+                    <span class="settings-item-text">Configuração Financeira</span>
+                    <span class="settings-item-chevron">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </span>
+                  </button>
+                  
+                  <button class="settings-item" id="set-item-faq">
+                    <span class="settings-item-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </span>
+                    <span class="settings-item-text">Central de Ajuda (FAQ)</span>
+                    <span class="settings-item-chevron">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </span>
+                  </button>
+                  
                 </div>
               </div>
-
-              <div class="form-field-group">
-                <label for="set-time-interval">Intervalo de Atendimento</label>
-                <select id="set-time-interval" class="admin-select">
-                  <option value="30">30 minutos</option>
-                  <option value="45">45 minutos</option>
-                  <option value="60" selected>60 minutos (1 hora)</option>
-                  <option value="90">90 minutos</option>
-                </select>
-                <span class="status-hint">Isso recalcula matematicamente a grade de horários gerada para o cliente.</span>
-              </div>
-
-              <!-- Tema de Cores -->
-              <div class="form-field-group">
-                <label style="margin-bottom:4px;">Cores da Identidade Visual</label>
-                <div class="theme-options-grid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
-                  <button type="button" class="btn-theme-selector active" data-color="gold" style="border:2px solid var(--gold); padding:8px 2px; border-radius:var(--radius-sm); font-size:10px; font-weight:700; color:#fff; background:rgba(200, 146, 42, 0.15); cursor:pointer; text-align:center;">👑 LUXO</button>
-                  <button type="button" class="btn-theme-selector" data-color="blue" style="border:2px solid transparent; padding:8px 2px; border-radius:var(--radius-sm); font-size:10px; font-weight:700; color:#fff; background:rgba(10, 132, 255, 0.15); cursor:pointer; text-align:center;">🔵 AZUL</button>
-                  <button type="button" class="btn-theme-selector" data-color="emerald" style="border:2px solid transparent; padding:8px 2px; border-radius:var(--radius-sm); font-size:10px; font-weight:700; color:#fff; background:rgba(48, 209, 88, 0.15); cursor:pointer; text-align:center;">🟢 CLASSIC</button>
-                  <button type="button" class="btn-theme-selector" data-color="ruby" style="border:2px solid transparent; padding:8px 2px; border-radius:var(--radius-sm); font-size:10px; font-weight:700; color:#fff; background:rgba(255, 69, 58, 0.15); cursor:pointer; text-align:center;">🔴 RUBI</button>
+              
+              <div class="settings-section">
+                <h4>MINHA CONTA</h4>
+                <div class="settings-list">
+                  
+                  <button class="settings-item" id="set-item-profile">
+                    <span class="settings-item-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </span>
+                    <span class="settings-item-text">Editar Perfil</span>
+                    <span class="settings-item-chevron">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </span>
+                  </button>
+                  
+                  <button class="settings-item" id="set-item-hours">
+                    <span class="settings-item-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </span>
+                    <span class="settings-item-text">Horários de Trabalho</span>
+                    <span class="settings-item-chevron">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </span>
+                  </button>
+                  
                 </div>
-                <span class="status-hint">Muda a cor de destaque do painel admin e do site do cliente instantaneamente!</span>
               </div>
 
-              <!-- Salvar -->
-              <button type="submit" class="btn-primary full-width" style="margin-top:auto; padding:12px; font-size:13px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; margin-right:8px; display:inline-block; vertical-align:middle;">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                </svg>
-                Salvar Configurações
-              </button>
+              <div class="settings-section">
+                <h4>SISTEMA</h4>
+                <div class="settings-list">
+                  
+                  <button class="settings-item" id="set-item-notifications">
+                    <span class="settings-item-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    </span>
+                    <span class="settings-item-text">Notificações &amp; Alertas</span>
+                    <span class="settings-item-chevron">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </span>
+                  </button>
+                  
+                  <button class="settings-item" id="set-item-share">
+                    <span class="settings-item-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    </span>
+                    <span class="settings-item-text">Links de Divulgação</span>
+                    <span class="settings-item-chevron">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </span>
+                  </button>
+                  
+                </div>
+              </div>
+              
             </div>
             
-          </form>
+            <!-- Coluna da Direita: Conteúdo Ativo (Abas) -->
+            <div class="settings-col settings-content-column">
+              
+              <!-- PAINEL: RELATÓRIO DE AGENDAMENTOS -->
+              <div class="settings-accordion-panel" id="panel-reports">
+                <div class="accordion-panel-header">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    Relatório de Agendamentos
+                  </h3>
+                </div>
+                <div class="accordion-panel-body">
+                  <div class="report-pills-row" style="padding:0 0 20px 0;">
+                    <button class="report-filter-pill active" data-days="7">7 DIAS</button>
+                    <button class="report-filter-pill" data-days="30">30 DIAS</button>
+                    <button class="report-filter-pill" data-days="all">TUDO</button>
+                  </div>
+                  <div class="reports-grid" style="padding:0; margin-bottom:28px;">
+                    <div class="report-card">
+                      <div class="report-card-header"><span class="report-card-title">TOTAL</span><svg viewBox="0 0 24 24" width="16" height="16" stroke="var(--gold)" fill="none" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>
+                      <div class="report-card-value" id="rep-val-total">0</div>
+                      <div class="report-card-sub">AGENDAMENTOS</div>
+                    </div>
+                    <div class="report-card">
+                      <div class="report-card-header"><span class="report-card-title">CONCLUÍDOS</span><svg viewBox="0 0 24 24" width="16" height="16" stroke="#2196F3" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="9 12 11 14 15 10"></polyline></svg></div>
+                      <div class="report-card-value" id="rep-val-concluidos">0 <span style="font-size:14px;color:var(--text-muted)">/0</span></div>
+                      <div class="report-card-line" style="background:#2196F3;"></div>
+                    </div>
+                    <div class="report-card">
+                      <div class="report-card-header"><span class="report-card-title">PENDENTES</span><svg viewBox="0 0 24 24" width="16" height="16" stroke="#FFC107" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                      <div class="report-card-value" id="rep-val-pendentes">0</div>
+                      <div class="report-card-line" style="background:#FFC107;"></div>
+                    </div>
+                    <div class="report-card">
+                      <div class="report-card-header"><span class="report-card-title">FALTAS</span><svg viewBox="0 0 24 24" width="16" height="16" stroke="#F44336" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div>
+                      <div class="report-card-value" style="color:#F44336" id="rep-val-faltas">0</div>
+                      <div class="report-card-line" style="background:#F44336;"></div>
+                    </div>
+                  </div>
+                  <div class="reports-sections-grid" style="padding:0;">
+                    <div>
+                      <h3 class="reports-section-title"><span class="reports-section-marker"></span> RANKING DE CLIENTES</h3>
+                      <div class="reports-empty-box" id="rep-ranking-box">Nenhum cliente neste período</div>
+                    </div>
+                    <div>
+                      <h3 class="reports-section-title"><span class="reports-section-marker"></span> DEMANDA DE SERVIÇOS</h3>
+                      <div class="reports-empty-box" id="rep-demanda-box">Nenhum serviço neste período</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- PAINEL: CONFIGURAÇÃO FINANCEIRA -->
+              <div class="settings-accordion-panel" id="panel-financial">
+                <div class="accordion-panel-header">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    Configuração Financeira
+                  </h3>
+                </div>
+                <div class="accordion-panel-body">
+                  <form id="form-config-financial">
+                    <div class="form-field-group">
+                      <label for="set-financial-currency">Moeda Padrão</label>
+                      <select id="set-financial-currency" class="admin-select"><option value="BRL" selected>Real (R$)</option><option value="USD">Dólar ($)</option><option value="EUR">Euro (€)</option></select>
+                    </div>
+                    <div class="form-field-group">
+                      <label for="set-financial-revenue-goal">Meta de Receita Mensal</label>
+                      <input type="number" id="set-financial-revenue-goal" class="admin-input" placeholder="Ex: 5000">
+                    </div>
+                    <div class="form-field-group">
+                      <label for="set-financial-expenses">Custo Fixo Estimado Mensal</label>
+                      <input type="number" id="set-financial-expenses" class="admin-input" placeholder="Ex: 1500">
+                      <span class="status-hint">Custos fixos de aluguel, luz, insumos etc.</span>
+                    </div>
+                    <div class="accordion-panel-footer">
+                      <button type="submit" class="btn-primary">Salvar Financeiro</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              
+              <!-- PAINEL: CENTRAL DE AJUDA (FAQ) -->
+              <div class="settings-accordion-panel" id="panel-faq">
+                <div class="accordion-panel-header">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Central de Ajuda &amp; FAQ
+                  </h3>
+                </div>
+                <div class="accordion-panel-body faq-container">
+                  <div class="faq-item"><h4 class="faq-question">Como funciona o cartão fidelidade?</h4><div class="faq-answer"><p>Quando você marca um agendamento como <strong>Concluído</strong>, o sistema adiciona um selo ao cartão fidelidade do cliente. Ao acumular 10 selos, ele ganha um corte grátis resgatável no CRM.</p></div></div>
+                  <div class="faq-item"><h4 class="faq-question">Como bloquear a agenda para folgas?</h4><div class="faq-answer"><p>Clique em <strong>Bloquear Horário</strong> nas Ações Rápidas. Você pode bloquear um horário ou o <strong>dia todo</strong>. O sistema pergunta se quer cancelar agendamentos existentes.</p></div></div>
+                  <div class="faq-item"><h4 class="faq-question">Como os clientes confirmam o agendamento?</h4><div class="faq-answer"><p>O agendamento é confirmado automaticamente (status "Confirmado"). O cliente é redirecionado para enviar mensagem de confirmação no WhatsApp da barbearia com todos os dados.</p></div></div>
+                  <div class="faq-item"><h4 class="faq-question">Como funciona a Projeção Financeira?</h4><div class="faq-answer"><p>Em <strong>Configuração Financeira</strong>, defina sua meta e custos fixos. O Relatório calcula faturamento acumulado e projeta o lucro líquido para acompanhar o crescimento do negócio.</p></div></div>
+                </div>
+              </div>
+              
+              <!-- PAINEL: EDITAR PERFIL -->
+              <div class="settings-accordion-panel" id="panel-profile">
+                <div class="accordion-panel-header">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Editar Perfil da Barbearia
+                  </h3>
+                </div>
+                <div class="accordion-panel-body">
+                  <form id="form-config-profile">
+                    <div class="form-field-group"><label for="set-barber-name">Nome da Barbearia *</label><input type="text" id="set-barber-name" class="admin-input" required></div>
+                    <div class="form-field-group">
+                      <label for="set-barber-phone">WhatsApp de Destino *</label>
+                      <input type="tel" id="set-barber-phone" class="admin-input" placeholder="(11) 99999-9999" required>
+                      <span class="status-hint" style="color:var(--gold);">WhatsApp para onde as confirmações dos clientes serão direcionadas.</span>
+                    </div>
+                    <div class="form-field-group"><label for="set-barber-address">Endereço Completo</label><input type="text" id="set-barber-address" class="admin-input"></div>
+                    <div class="form-field-group"><label for="set-barber-instagram">Link do Instagram</label><input type="text" id="set-barber-instagram" class="admin-input" placeholder="Ex: @cesar.barbearia"></div>
+                    
+                    <!-- Upload de Foto de Perfil -->
+                    <div class="form-field-group">
+                      <label>Foto do Perfil</label>
+                      <div style="display:flex; align-items:center; gap:20px;">
+                        <img id="set-profile-img-preview" src="./imagens_hero/cesar.webp" alt="Preview Perfil" style="width:64px; height:64px; border-radius:50%; border:1.5px solid var(--gold); object-fit:cover; background:#222; flex-shrink:0;">
+                        <div style="display:flex; flex-direction:column; gap:6px; flex-grow:1;">
+                          <input type="file" id="set-profile-img-file" accept="image/*" style="display:none;">
+                          <button type="button" class="btn-secondary" id="btn-upload-profile-img" style="padding:8px 16px; font-size:12px; width:fit-content; text-transform:uppercase;">Escolher Foto de Perfil</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Upload de Foto de Capa -->
+                    <div class="form-field-group">
+                      <label>Foto da Capa (Hero)</label>
+                      <div style="display:flex; align-items:center; gap:20px;">
+                        <img id="set-cover-img-preview" src="./imagens_hero/hero.png" alt="Preview Capa" style="width:120px; height:64px; border-radius:var(--radius-sm); border:1.5px solid var(--gold); object-fit:cover; background:#222; flex-shrink:0;">
+                        <div style="display:flex; flex-direction:column; gap:6px; flex-grow:1;">
+                          <input type="file" id="set-cover-img-file" accept="image/*" style="display:none;">
+                          <button type="button" class="btn-secondary" id="btn-upload-cover-img" style="padding:8px 16px; font-size:12px; width:fit-content; text-transform:uppercase;">Escolher Foto de Capa</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-field-group">
+                      <label style="margin-bottom:4px;">Cores da Identidade Visual</label>
+                      <div class="theme-selectors-grid">
+                        <button type="button" class="btn-theme-selector active" data-color="gold" style="background:rgba(200, 146, 42, 0.15); border-color:var(--gold);">👑 LUXO</button>
+                        <button type="button" class="btn-theme-selector" data-color="blue" style="background:rgba(10, 132, 255, 0.15);">🔵 AZUL</button>
+                        <button type="button" class="btn-theme-selector" data-color="emerald" style="background:rgba(48, 209, 88, 0.15);">🟢 CLASSIC</button>
+                        <button type="button" class="btn-theme-selector" data-color="ruby" style="background:rgba(255, 69, 58, 0.15);">🔴 RUBI</button>
+                        <button type="button" class="btn-theme-selector" data-color="custom" style="background:rgba(255,255,255,0.1);">🎨 CUSTOM</button>
+                      </div>
+                      <span class="status-hint">Muda a cor de destaque do painel admin e do site!</span>
+                    </div>
+
+                    <!-- Custom Colors Row (Visible only when CUSTOM theme is selected) -->
+                    <div id="custom-colors-container" class="hidden" style="display:flex; flex-direction:column; gap:12px; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:16px; border-radius:var(--radius-sm); margin-bottom: 8px;">
+                      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+                        <div class="form-field-group">
+                          <label for="set-color-border" style="font-size:10px;">Cor das Bordas</label>
+                          <input type="color" id="set-color-border" class="admin-input" value="#C8922A" style="padding:4px; height:38px; cursor:pointer;">
+                        </div>
+                        <div class="form-field-group">
+                          <label for="set-color-text" style="font-size:10px;">Cor do Texto</label>
+                          <input type="color" id="set-color-text" class="admin-input" value="#FFFFFF" style="padding:4px; height:38px; cursor:pointer;">
+                        </div>
+                        <div class="form-field-group">
+                          <label for="set-color-bg" style="font-size:10px;">Cor do Fundo</label>
+                          <input type="color" id="set-color-bg" class="admin-input" value="#030304" style="padding:4px; height:38px; cursor:pointer;">
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="accordion-panel-footer"><button type="submit" class="btn-primary">Salvar Perfil</button></div>
+                  </form>
+                </div>
+              </div>
+              
+              <!-- PAINEL: HORÁRIOS DE TRABALHO -->
+              <div class="settings-accordion-panel" id="panel-hours">
+                <div class="accordion-panel-header">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Horários de Trabalho
+                  </h3>
+                </div>
+                <div class="accordion-panel-body">
+                  <form id="form-config-hours">
+                    <div class="form-field-group">
+                      <label style="margin-bottom:6px;">Dias de Funcionamento</label>
+                      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;"><input type="checkbox" id="set-day-1" checked style="accent-color:var(--gold);"> Seg</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;"><input type="checkbox" id="set-day-2" checked style="accent-color:var(--gold);"> Ter</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;"><input type="checkbox" id="set-day-3" checked style="accent-color:var(--gold);"> Qua</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;"><input type="checkbox" id="set-day-4" checked style="accent-color:var(--gold);"> Qui</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;"><input type="checkbox" id="set-day-5" checked style="accent-color:var(--gold);"> Sex</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;"><input type="checkbox" id="set-day-6" checked style="accent-color:var(--gold);"> Sáb</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#fff; cursor:pointer;"><input type="checkbox" id="set-day-0" style="accent-color:var(--gold);"> Dom</label>
+                      </div>
+                    </div>
+                    <div class="form-row-2">
+                      <div class="form-field-group">
+                        <label for="set-time-start">Horário de Abertura</label>
+                        <select id="set-time-start" class="admin-select"><option value="07:00">07:00</option><option value="08:00">08:00</option><option value="09:00" selected>09:00</option><option value="10:00">10:00</option></select>
+                      </div>
+                      <div class="form-field-group">
+                        <label for="set-time-end">Horário de Fechamento</label>
+                        <select id="set-time-end" class="admin-select"><option value="17:00">17:00</option><option value="18:00">18:00</option><option value="19:00">19:00</option><option value="20:00" selected>20:00</option><option value="21:00">21:00</option></select>
+                      </div>
+                    </div>
+                    <div class="form-field-group">
+                      <label for="set-time-interval">Intervalo de Atendimento</label>
+                      <select id="set-time-interval" class="admin-select"><option value="30">30 minutos</option><option value="45">45 minutos</option><option value="60" selected>60 minutos (1 hora)</option><option value="90">90 minutos</option></select>
+                    </div>
+                    <div class="accordion-panel-footer"><button type="submit" class="btn-primary">Salvar Horários</button></div>
+                  </form>
+                </div>
+              </div>
+              
+              <!-- PAINEL: NOTIFICAÇÕES -->
+              <div class="settings-accordion-panel" id="panel-notifications">
+                <div class="accordion-panel-header">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    Notificações &amp; Alertas
+                  </h3>
+                </div>
+                <div class="accordion-panel-body">
+                  <div class="settings-card-box" style="margin:0; box-shadow:none; background:transparent;">
+                    <!-- Switch Toggle -->
+                    <div class="settings-toggle-row">
+                      <div class="toggle-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                      </div>
+                      <div class="toggle-details">
+                        <h5>Alertas de agendamento</h5>
+                        <p>Receba avisos sonoros de novos agendamentos.</p>
+                      </div>
+                      <label class="switch-toggle">
+                        <input type="checkbox" id="set-notif-sound-toggle" checked>
+                        <span class="switch-slider"></span>
+                      </label>
+                    </div>
+                    
+                    <!-- Sound Selector Row -->
+                    <div class="settings-sound-row">
+                      <div class="sound-select-wrapper">
+                        <label for="set-notif-sound-select">Som da Notificação</label>
+                        <select id="set-notif-sound-select" class="admin-select">
+                          <option value="chime">Chime Luxo (Padrão)</option>
+                          <option value="bell">Sino de Cristal</option>
+                          <option value="retro">Retro Beep</option>
+                          <option value="digital">Alerta Digital</option>
+                        </select>
+                      </div>
+                      <button type="button" class="btn-sound-play" id="btn-test-notif-sound" title="Testar Som">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- PAINEL: COMPARTILHAR -->
+              <div class="settings-accordion-panel" id="panel-share">
+                <div class="accordion-panel-header">
+                  <h3>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    Links de Divulgação
+                  </h3>
+                </div>
+                <div class="accordion-panel-body">
+                  <div style="display:flex; flex-direction:column; gap:16px;">
+                    <p style="font-size:13px; color:var(--text-muted); margin:0 0 8px 0;">
+                      Divulgue o site da sua barbearia copiando o link abaixo ou compartilhando diretamente em suas redes.
+                    </p>
+                    
+                    <button class="settings-item" id="set-item-copy-link" style="margin:0; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                      <span class="settings-item-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                      </span>
+                      <span class="settings-item-text">Copiar link de agendamento</span>
+                      <span class="settings-item-chevron">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                      </span>
+                    </button>
+                    
+                    <button class="settings-item" id="set-item-share-link" style="margin:0; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                      <span class="settings-item-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                      </span>
+                      <span class="settings-item-text">Compartilhar link de agendamento</span>
+                      <span class="settings-item-chevron">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+
         </section>
-
-      </div>
-    </main>
-
+      </div><!-- /admin-content -->
+    </main><!-- /admin-main -->
   </div><!-- /admin-container -->
 
   <!-- ====== TOAST NOTIFICATION CONTAINER ====== -->
@@ -597,6 +881,13 @@
             <select id="manual-prof-select" class="admin-select" required>
             </select>
           </div>
+        </div>
+
+        <div class="form-field-group hidden" id="manual-field-allday" style="margin-bottom: 12px;">
+          <label style="display: flex; align-items: center; gap: 8px; color: #fff; cursor: pointer; font-size: 13px;">
+            <input type="checkbox" id="manual-allday" style="accent-color: var(--gold); width: 16px; height: 16px;">
+            Bloquear o dia todo (Todos os horários)
+          </label>
         </div>
 
         <div class="form-row-2">

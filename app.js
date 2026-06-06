@@ -40,13 +40,83 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  function lightenDarkenColor(col, amt) {
+    if (!col || col[0] !== '#') return col;
+    try {
+      let usePound = true;
+      col = col.slice(1);
+      let num = parseInt(col, 16);
+      let r = (num >> 16) + amt;
+      if (r > 255) r = 255;
+      else if (r < 0) r = 0;
+      let g = ((num >> 8) & 0x00FF) + amt;
+      if (g > 255) g = 255;
+      else if (g < 0) g = 0;
+      let b = (num & 0x0000FF) + amt;
+      if (b > 255) b = 255;
+      else if (b < 0) b = 0;
+      return "#" + (b | (g << 8) | (r << 16)).toString(16).padStart(6, '0');
+    } catch(e) {
+      return "#" + col;
+    }
+  }
+
   function applyTheme(themeKey) {
-    const t = themes[themeKey] || themes.gold;
+    let t = themes.gold;
+    let customCover = null;
+    
+    try {
+      if (themeKey && themeKey.startsWith('{')) {
+        const themeConfig = JSON.parse(themeKey);
+        t = {
+          primary: themeConfig.borderColor || '#C8922A',
+          light: themeConfig.borderColor || '#E0A83A',
+          gradient: `linear-gradient(135deg, ${themeConfig.borderColor || '#E0A83A'} 0%, ${themeConfig.borderColor || '#B8801A'} 100%)`,
+          border: themeConfig.borderColor || 'rgba(200, 146, 42, 0.2)',
+          borderCard: themeConfig.borderColor || 'rgba(200, 146, 42, 0.25)',
+          text: themeConfig.textColor || '#FFFFFF',
+          bg: themeConfig.bgColor || '#030304'
+        };
+        customCover = themeConfig.coverImg;
+      } else {
+        t = themes[themeKey] || themes.gold;
+      }
+    } catch (e) {
+      console.error("Error parsing theme JSON:", e);
+      t = themes[themeKey] || themes.gold;
+    }
+
     document.documentElement.style.setProperty('--gold', t.primary);
-    document.documentElement.style.setProperty('--gold-light', t.light);
-    document.documentElement.style.setProperty('--gold-gradient', t.gradient);
-    document.documentElement.style.setProperty('--border', t.border);
-    document.documentElement.style.setProperty('--border-card', t.borderCard);
+    document.documentElement.style.setProperty('--gold-light', t.light || t.primary);
+    document.documentElement.style.setProperty('--gold-gradient', t.gradient || `linear-gradient(135deg, ${t.primary} 0%, ${t.primary} 100%)`);
+    document.documentElement.style.setProperty('--border', t.border || 'rgba(255,255,255,0.15)');
+    document.documentElement.style.setProperty('--border-card', t.borderCard || 'rgba(255,255,255,0.18)');
+
+    if (t.text) {
+      document.documentElement.style.setProperty('--text', t.text);
+    }
+    if (t.bg) {
+      document.documentElement.style.setProperty('--bg', t.bg);
+      document.documentElement.style.setProperty('--bg-card', lightenDarkenColor(t.bg, 8));
+      document.documentElement.style.setProperty('--bg-input', lightenDarkenColor(t.bg, 8));
+      document.documentElement.style.setProperty('--bg-section', t.bg);
+    } else {
+      document.documentElement.style.removeProperty('--text');
+      document.documentElement.style.removeProperty('--bg');
+      document.documentElement.style.removeProperty('--bg-card');
+      document.documentElement.style.removeProperty('--bg-input');
+      document.documentElement.style.removeProperty('--bg-section');
+    }
+
+    // Apply custom cover image to hero section if present
+    const heroBg = document.getElementById('hero-bg');
+    if (heroBg) {
+      if (customCover) {
+        heroBg.src = customCover;
+      } else {
+        heroBg.src = './imagens_hero/hero.png';
+      }
+    }
   }
 
   async function loadBrandingConfig() {
@@ -271,11 +341,13 @@ document.addEventListener('DOMContentLoaded', () => {
       services = defaultServices;
     }
 
+    const activeServices = services.filter(s => s.id !== 'bloqueio');
+
     const grid = $('services-list');
     if (!grid) return;
     grid.innerHTML = '';
 
-    services.forEach(service => {
+    activeServices.forEach(service => {
       const card = document.createElement('div');
       card.className = 'service-card';
       card.dataset.id = service.id;
