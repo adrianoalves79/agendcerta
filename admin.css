@@ -3409,4 +3409,130 @@ select option {
   border-color: rgba(255, 69, 58, 0.4);
 }
 
+/* ==========================================================================
+   MODAL GERENCIAR CLIENTES FIDELIDADE
+   ========================================================================== */
+
+.modal-card-wide {
+  max-width: 560px;
+  width: 100%;
+}
+
+.loyalty-client-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+}
+
+.loyalty-client-row:hover {
+  border-color: var(--border);
+  background: rgba(200, 146, 42, 0.03);
+}
+
+.loyalty-client-row.is-active {
+  border-color: rgba(200, 146, 42, 0.35);
+  background: rgba(200, 146, 42, 0.05);
+}
+
+.loyalty-client-avatar-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(200, 146, 42, 0.2) 0%, rgba(200, 146, 42, 0.1) 100%);
+  border: 1px solid rgba(200, 146, 42, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.loyalty-client-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.loyalty-client-info-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loyalty-client-info-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.loyalty-client-stamps-badge {
+  background: rgba(200, 146, 42, 0.1);
+  border: 1px solid rgba(200, 146, 42, 0.2);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.loyalty-active-badge {
+  background: rgba(48, 209, 88, 0.1);
+  border: 1px solid rgba(48, 209, 88, 0.25);
+  color: var(--color-green);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.btn-loyalty-toggle {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-loyalty-toggle:hover {
+  background: rgba(200, 146, 42, 0.1);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.btn-loyalty-toggle.is-active {
+  background: rgba(255, 69, 58, 0.08);
+  border-color: rgba(255, 69, 58, 0.3);
+  color: var(--color-red);
+}
+
+.btn-loyalty-toggle.is-active:hover {
+  background: rgba(255, 69, 58, 0.15);
+  border-color: rgba(255, 69, 58, 0.5);
+}
+
+/* Auto-stamp notification toast variation */
+.toast.stamp-auto {
+  border-color: var(--color-green);
+}
 

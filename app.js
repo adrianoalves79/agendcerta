@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
       $('s2-name').textContent = state.service.name;
       $('s2-dur').textContent  = state.service.duration;
       $('s2-price').textContent = state.service.price;
+      await fetchMonthBookings();
       buildCalendar();
       await buildTimeSlots();
     }
@@ -403,15 +404,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-  $('cal-prev').addEventListener('click', () => {
+  let monthBookings = [];
+
+  async function fetchMonthBookings() {
+    if (!state.professional) return;
+    const { month, year } = state.cal;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    
+    const { data, error } = await supabase.from('agendamentos').select('date, time, professional, status')
+      .eq('professional', state.professional.name)
+      .neq('status', 'Cancelado')
+      .gte('date', startStr)
+      .lte('date', endStr);
+      
+    if (error) {
+      console.error("Erro ao buscar bloqueios do mês:", error);
+      monthBookings = [];
+    } else {
+      monthBookings = data || [];
+    }
+  }
+
+  $('cal-prev').addEventListener('click', async () => {
     state.cal.month--;
     if (state.cal.month < 0) { state.cal.month = 11; state.cal.year--; }
+    await fetchMonthBookings();
     buildCalendar();
   });
 
-  $('cal-next').addEventListener('click', () => {
+  $('cal-next').addEventListener('click', async () => {
     state.cal.month++;
     if (state.cal.month > 11) { state.cal.month = 0; state.cal.year++; }
+    await fetchMonthBookings();
     buildCalendar();
   });
 
@@ -441,7 +467,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const isWorkingDay = openDays.includes(dateObj.getDay());
 
-      if (dateObj < today || !isWorkingDay) {
+      // Check if this date is blocked all day
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isAllDayBlocked = monthBookings.some(b => 
+        b.date === dateStr && b.time === 'Dia Inteiro'
+      );
+
+      if (dateObj < today || !isWorkingDay || isAllDayBlocked) {
         btn.classList.add('past');
         btn.disabled = true;
       } else {
@@ -512,6 +544,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const validBookings = bookings || [];
 
+    const hasAllDayBlock = validBookings.some(b => 
+      b.time === 'Dia Inteiro' &&
+      b.professional === (state.professional ? state.professional.name : "César")
+    );
+
     const bookedTimes = new Set(
       validBookings
         .filter(b => {
@@ -530,14 +567,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const slotDt  = new Date(state.date);
       slotDt.setHours(h, m, 0, 0);
 
-      const isBooked = bookedTimes.has(t);
+      const isBooked = hasAllDayBlock || bookedTimes.has(t);
 
       if (isToday && slotDt <= now) {
         btn.disabled = true;
       } else if (isBooked) {
         btn.disabled = true;
         btn.classList.add('booked');
-        btn.title = "Horário já reservado";
+        btn.title = hasAllDayBlock ? "Dia inteiro bloqueado" : "Horário já reservado";
       } else {
         if (state.time === t) btn.classList.add('selected');
         btn.addEventListener('click', () => {
@@ -615,13 +652,12 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btn-confirm').addEventListener('click', async () => {
     // Verificar se o horário já foi agendado por outra pessoa em tempo real
     const dateStr = `${state.date.getFullYear()}-${String(state.date.getMonth() + 1).padStart(2, '0')}-${String(state.date.getDate()).padStart(2, '0')}`;
-    const { data: bookings } = await supabase.from('agendamentos').select('id')
+    const { data: bookings } = await supabase.from('agendamentos').select('id, time')
       .eq('date', dateStr)
-      .eq('time', state.time)
       .eq('professional', state.professional ? state.professional.name : "César")
       .neq('status', 'Cancelado');
 
-    const isAlreadyBooked = bookings && bookings.length > 0;
+    const isAlreadyBooked = bookings && bookings.some(b => b.time === state.time || b.time === 'Dia Inteiro');
 
     if (isAlreadyBooked) {
       alert("Desculpe, este horário já foi reservado por outro cliente. Por favor, escolha outro horário.");

@@ -1038,6 +1038,47 @@
     </div>
   </div>
 
+  <!-- 4a. MODAL: GERENCIAR CLIENTES FIDELIDADE (Novo Cliente) -->
+  <div class="modal-overlay" id="modal-manage-loyalty">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-right:8px;vertical-align:middle;color:var(--gold);">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/>
+          </svg>
+          Clientes Fidelidade
+        </h2>
+        <button class="modal-close-btn" data-close="modal-manage-loyalty">&times;</button>
+      </div>
+      <div class="modal-body" style="padding-top: 8px;">
+
+        <!-- Instrução -->
+        <div style="background: rgba(200,146,42,0.08); border: 1px solid rgba(200,146,42,0.2); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 10px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" style="width:18px;height:18px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Ative o programa fidelidade para um cliente. Quando um agendamento dele for concluído, o selo é registrado <strong>automaticamente</strong> no cartão fidelidade.</span>
+        </div>
+
+        <!-- Busca de clientes -->
+        <div class="search-wrap" style="margin-bottom: 16px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="manage-loyalty-search" placeholder="Buscar cliente por nome ou WhatsApp..." class="admin-input">
+        </div>
+
+        <!-- Lista de clientes -->
+        <div id="manage-loyalty-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; padding-right: 4px;">
+          <!-- Injetado via JS -->
+        </div>
+
+        <div class="modal-footer" style="padding-top: 16px;">
+          <button type="button" class="btn-cancel" data-close="modal-manage-loyalty">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 4. MODAL: CARTÃO FIDELIDADE CRM -->
   <div class="modal-overlay" id="modal-loyalty-card">
     <div class="modal-card modal-card-premium">

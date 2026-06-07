@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const qaNewClient = $('qa-new-client');
     if (qaNewClient) {
       qaNewClient.onclick = () => {
-        $('btn-tab-crm').click();
+        openManageLoyaltyModal();
       };
     }
 
@@ -819,6 +819,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Filter upcoming: Today or future appointments with status 'Confirmado'
       const eligibleBookings = state.bookings.filter(b => {
         if (b.status !== 'Confirmado' || !b.date) return false;
+        const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+        if (isBlock) return false;
         const bDate = parseLocalDate(b.date);
         bDate.setHours(0, 0, 0, 0);
         return bDate.getTime() >= todayTime;
@@ -1096,18 +1098,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const hasObsHTML = b.clientObs ? `<div class="agenda-obs"><strong>Obs:</strong> ${b.clientObs}</div>` : '';
 
       if (isBlock) {
+        const isAllDay = b.time === 'Dia Inteiro';
         card.innerHTML = `
           <div class="agenda-time">
-            <span class="agenda-time-val">${b.time}</span>
-            <span class="agenda-time-dur">${b.serviceDuration}</span>
+            <span class="agenda-time-val">${isAllDay ? 'Dia Todo' : b.time}</span>
+            <span class="agenda-time-dur">${isAllDay ? 'Lembrete' : b.serviceDuration}</span>
           </div>
           <div class="agenda-detail">
             <div class="agenda-title-row">
-              <span class="agenda-client-name" style="color: var(--color-red); font-weight:700;">🚫 HORÁRIO BLOQUEADO</span>
+              <span class="agenda-client-name" style="color: var(--color-red); font-weight:700;">🚫 ${isAllDay ? 'DIA INTEIRO BLOQUEADO' : 'HORÁRIO BLOQUEADO'}</span>
               <span class="agenda-service-badge" style="background-color: rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); color: var(--color-red);">${b.professional || 'César'}</span>
             </div>
             <div class="agenda-meta-row">
-              <span class="agenda-meta-item">Este horário está reservado para bloqueio interno da agenda.</span>
+              <span class="agenda-meta-item">${isAllDay ? 'A agenda completa deste dia está bloqueada para este profissional.' : 'Este horário está reservado para bloqueio interno da agenda.'}</span>
             </div>
             ${hasObsHTML}
           </div>
@@ -1178,11 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast("Agendamento Confirmado", `Horário de ${item.clientName} às ${item.time} foi confirmado.`);
     } else if (action === 'Concluir' || action === 'Concluído') {
       newStatus = 'Concluido';
-      
-      // Auto register stamp in CRM fidelidade
-      triggerFidelidadeStampAuto(item.clientPhone);
-
-      showToast("Agendamento Concluído", `Corte de ${item.clientName} concluído com sucesso. Selo adicionado!`);
+      showToast("Agendamento Concluído", `Corte de ${item.clientName} concluído com sucesso.`);
     } else if (action === 'Pendente') {
       newStatus = 'Pendente';
       showToast("Agendamento Pendente", `Horário de ${item.clientName} às ${item.time} foi marcado como Pendente.`);
@@ -1201,18 +1200,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // update supabase
     await supabase.from('agendamentos').update({ status: newStatus }).eq('id', id);
 
-    renderAll();
-  }
-
-  // Automatic stamp generator in CRM when appointment is concluded
-  function triggerFidelidadeStampAuto(phone) {
-    const clientsStamps = JSON.parse(localStorage.getItem('cesar_barbearia_fidelidades') || '{}');
-    const currentStamps = clientsStamps[phone] || 0;
-    
-    if (currentStamps < 10) {
-      clientsStamps[phone] = currentStamps + 1;
-      localStorage.setItem('cesar_barbearia_fidelidades', JSON.stringify(clientsStamps));
+    // ── AUTO-STAMP: Se agendamento foi concluído e cliente está no programa fidelidade ──
+    if (newStatus === 'Concluido' && item.clientPhone) {
+      const loyaltyActive = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
+      const phone = item.clientPhone.trim();
+      
+      if (loyaltyActive[phone] === true) {
+        const clientFidelidades = JSON.parse(localStorage.getItem('cesar_barbearia_fidelidades') || '{}');
+        const currentStamps = clientFidelidades[phone] !== undefined ? clientFidelidades[phone] : 0;
+        
+        if (currentStamps < 10) {
+          clientFidelidades[phone] = currentStamps + 1;
+          localStorage.setItem('cesar_barbearia_fidelidades', JSON.stringify(clientFidelidades));
+          
+          const newTotal = clientFidelidades[phone];
+          const remaining = 10 - newTotal;
+          
+          if (newTotal === 10) {
+            showToast(`🎁 Cartão Completo!`, `${item.clientName} completou o cartão fidelidade e ganhou um corte grátis!`);
+          } else {
+            showToast(`👑 Selo Registrado`, `Cartão fidelidade de ${item.clientName} atualizado: ${newTotal}/10 selos (faltam ${remaining}).`);
+          }
+          playNotificationSound(true);
+        }
+      }
     }
+
+    renderAll();
   }
 
   // Manual booking submission inside modal
@@ -1257,15 +1271,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const inputDate = parseLocalDate(dVal);
       const dStr = inputDate.toDateString();
       
-      const bookedTimes = new Set(
-        state.bookings
-          .filter(b => {
-            if (!b.date || !b.time || b.status === 'Cancelado') return false;
-            const bookingDate = parseLocalDate(b.date);
-            return bookingDate.toDateString() === dStr && b.professional === inputProf;
-          })
-          .map(b => b.time)
+      const dayBookings = state.bookings.filter(b => {
+        if (!b.date || !b.time || b.status === 'Cancelado') return false;
+        const bookingDate = parseLocalDate(b.date);
+        return bookingDate.toDateString() === dStr && b.professional === inputProf;
+      });
+
+      const hasAllDayBlock = dayBookings.some(b => 
+        (b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado') && 
+        b.time === 'Dia Inteiro'
       );
+
+      const bookedTimes = new Set(dayBookings.map(b => b.time));
       
       const config = state.config || {};
       const startHour = parseInt(config.timeStart ? config.timeStart.split(':')[0] : 9);
@@ -1302,9 +1319,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const opt = document.createElement('option');
         opt.value = t;
         
-        const isBooked = bookedTimes.has(t);
+        const isBooked = hasAllDayBlock || bookedTimes.has(t);
         if (isBooked) {
-          opt.textContent = `${t} (Ocupado)`;
+          opt.textContent = hasAllDayBlock ? `${t} (Dia Bloqueado)` : `${t} (Ocupado)`;
           opt.disabled = true;
           opt.style.color = '#888';
         } else {
@@ -1479,21 +1496,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const isAllDayBlock = isBlock && allDayCheck && allDayCheck.checked;
 
       if (isAllDayBlock) {
-        // Verificar se existem agendamentos ativos de clientes neste dia
-        const activeClientBookings = state.bookings.filter(b => {
+        // Obter todos os agendamentos ativos (clientes ou bloqueios) para este profissional neste dia
+        const dayBookings = state.bookings.filter(b => {
           if (!b.date || b.status === 'Cancelado') return false;
           const bookingDate = parseLocalDate(b.date);
-          const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
           return bookingDate.toDateString() === inputDate.toDateString() &&
-                 b.professional === inputProf &&
-                 !isBlockRecord;
+                 b.professional === inputProf;
+        });
+
+        // Filtrar agendamentos ativos que são de clientes reais (não bloqueios)
+        const activeClientBookings = dayBookings.filter(b => {
+          const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+          return !isBlockRecord;
         });
 
         if (activeClientBookings.length > 0) {
-          const confirmCancel = confirm(`Existem ${activeClientBookings.length} agendamento(s) ativo(s) de cliente(s) neste dia. Deseja cancelá-los automaticamente e prosseguir com o bloqueio?`);
+          const confirmCancel = confirm(`Existem ${activeClientBookings.length} agendamento(s) ativo(s) de cliente(s) neste dia. Deseja cancelá-los automaticamente e prosseguir com o bloqueio do dia todo?`);
           if (!confirmCancel) return;
+        }
 
-          const bookingIdsToCancel = activeClientBookings.map(b => b.id);
+        // Cancelar todos os agendamentos existentes deste barbeiro neste dia (clientes ou blocos individuais)
+        if (dayBookings.length > 0) {
+          const bookingIdsToCancel = dayBookings.map(b => b.id);
           try {
             const { error: cancelError } = await supabase
               .from('agendamentos')
@@ -1503,88 +1527,37 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cancelError) throw cancelError;
 
             // Atualizar estado local
-            activeClientBookings.forEach(b => b.status = 'Cancelado');
+            dayBookings.forEach(b => b.status = 'Cancelado');
           } catch (err) {
-            console.error("Erro ao cancelar agendamentos de cliente no Supabase:", err);
+            console.error("Erro ao cancelar agendamentos existentes no Supabase:", err);
             alert("Erro ao cancelar agendamentos existentes. Tente novamente.");
             return;
           }
         }
 
-        // Gerar todos os slots de horário para o dia
-        const config = state.config || {};
-        const startHour = parseInt(config.timeStart ? config.timeStart.split(':')[0] : 9);
-        const endHour = parseInt(config.timeEnd ? config.timeEnd.split(':')[0] : 20);
-        const intervalMin = config.interval !== undefined ? config.interval : 60;
-        
-        const slots = [];
-        const current = new Date();
-        current.setHours(startHour, 0, 0, 0);
-        
-        const endLimit = new Date();
-        endLimit.setHours(endHour, 0, 0, 0);
-        
-        while (current < endLimit) {
-          const h = String(current.getHours()).padStart(2, '0');
-          const m = String(current.getMinutes()).padStart(2, '0');
-          const timeStr = `${h}:${m}`;
-          
-          if (current.getHours() !== 12) {
-            slots.push(timeStr);
-          }
-          
-          current.setMinutes(current.getMinutes() + intervalMin);
-        }
-        
-        if (slots.length === 0) {
-          slots.push("09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00");
-        }
-
-        // Filtrar horários que já estão bloqueados neste dia para evitar duplicidade
-        const blockedTimes = new Set(
-          state.bookings
-            .filter(b => {
-              if (!b.date || !b.time || b.status === 'Cancelado') return false;
-              const bookingDate = parseLocalDate(b.date);
-              const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
-              return bookingDate.toDateString() === inputDate.toDateString() &&
-                     b.professional === inputProf &&
-                     isBlockRecord;
-            })
-            .map(b => b.time)
-        );
-
-        const slotsToBlock = slots.filter(t => !blockedTimes.has(t));
-
-        if (slotsToBlock.length === 0) {
-          showToast("Agenda Bloqueada", "Todos os horários deste dia já estão bloqueados.");
-          closeModal('modal-manual-booking');
-          $('form-manual-booking').reset();
-          return;
-        }
-
-        const blocksToInsert = slotsToBlock.map(t => ({
-          clientName: clientName,
-          clientPhone: clientPhone,
+        // Inserir um único registro de bloqueio para o dia todo
+        const singleBlock = {
+          clientName: clientName, // "Horário Bloqueado"
+          clientPhone: clientPhone, // "(00) 00000-0000"
           clientBirth: '',
           clientObs: clientObs,
-          serviceId: finalServiceId,
-          serviceName: finalServiceName,
-          servicePrice: finalServicePrice,
-          serviceDuration: finalServiceDuration,
+          serviceId: finalServiceId, // "bloqueio"
+          serviceName: finalServiceName, // "Bloqueio de Agenda"
+          servicePrice: finalServicePrice, // "R$ 0,00"
+          serviceDuration: 'Dia Todo',
           date: dVal, // YYYY-MM-DD
-          time: t,
+          time: 'Dia Inteiro',
           professional: inputProf,
           status: 'Confirmado'
-        }));
+        };
 
         try {
-          const { error } = await supabase.from('agendamentos').insert(blocksToInsert);
+          const { error } = await supabase.from('agendamentos').insert([singleBlock]);
           if (error) throw error;
           
-          showToast("Agenda Bloqueada", `Dia todo (${slotsToBlock.length} horários) bloqueado com sucesso para ${inputProf}.`);
+          showToast("Agenda Bloqueada", `O dia todo foi bloqueado com sucesso para ${inputProf}.`);
         } catch (err) {
-          console.error("Erro ao salvar bloqueio em lote:", err);
+          console.error("Erro ao salvar bloqueio do dia todo:", err);
           alert("Erro ao registrar bloqueio do dia todo. Tente novamente.");
           return;
         }
@@ -1604,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!b.date || !b.time || b.status === 'Cancelado') return false;
         const bookingDate = parseLocalDate(b.date);
         return bookingDate.toDateString() === inputDate.toDateString() &&
-               b.time === inputTime &&
+               (b.time === inputTime || b.time === 'Dia Inteiro') &&
                b.professional === inputProf;
       });
 
@@ -1934,6 +1907,108 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ── MODAL: GERENCIAR CLIENTES FIDELIDADE ────────────────────────────────
+  function openManageLoyaltyModal() {
+    const searchInput = $('manage-loyalty-search');
+    if (searchInput) searchInput.value = '';
+    renderManageLoyaltyList('');
+    openModal('modal-manage-loyalty');
+
+    if (searchInput) {
+      searchInput.oninput = (e) => {
+        renderManageLoyaltyList(e.target.value.toLowerCase());
+      };
+    }
+  }
+
+  function renderManageLoyaltyList(query = '') {
+    const list = $('manage-loyalty-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    // Compile unique clients from bookings
+    const clientsMap = {};
+    state.bookings.forEach(b => {
+      const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+      if (isBlock || !b.clientPhone) return;
+
+      const phone = b.clientPhone.trim();
+      if (!clientsMap[phone]) {
+        clientsMap[phone] = {
+          name: b.clientName,
+          phone: phone,
+          visits: 0
+        };
+      }
+      if (b.status === 'Concluido') {
+        clientsMap[phone].visits++;
+      }
+    });
+
+    const clients = Object.values(clientsMap);
+    const filtered = query
+      ? clients.filter(c => c.name.toLowerCase().includes(query) || c.phone.includes(query))
+      : clients;
+
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+    const loyaltyActive = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
+    const clientFidelidades = JSON.parse(localStorage.getItem('cesar_barbearia_fidelidades') || '{}');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:13px;">
+        ${query ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}
+      </div>`;
+      return;
+    }
+
+    filtered.forEach(c => {
+      const isActive = loyaltyActive[c.phone] === true;
+      const stamps = clientFidelidades[c.phone] !== undefined ? clientFidelidades[c.phone] : 0;
+      const initials = c.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+      const row = document.createElement('div');
+      row.className = `loyalty-client-row${isActive ? ' is-active' : ''}`;
+      row.innerHTML = `
+        <div class="loyalty-client-avatar-sm">${isActive ? '👑' : initials}</div>
+        <div class="loyalty-client-info">
+          <div class="loyalty-client-info-name">${c.name}</div>
+          <div class="loyalty-client-info-meta">${c.phone} · ${c.visits} visitas concluídas</div>
+        </div>
+        ${isActive ? `<span class="loyalty-active-badge">Ativo</span>` : ''}
+        ${stamps > 0 ? `<span class="loyalty-client-stamps-badge">👑 ${stamps}/10</span>` : ''}
+        <button class="btn-loyalty-toggle ${isActive ? 'is-active' : ''}" data-phone="${c.phone}" data-name="${c.name}">
+          ${isActive ? 'Remover' : '+ Adicionar'}
+        </button>
+      `;
+
+      const toggleBtn = row.querySelector('.btn-loyalty-toggle');
+      toggleBtn.onclick = () => {
+        const loyaltyActiveNow = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
+        const wasActive = loyaltyActiveNow[c.phone] === true;
+
+        if (wasActive) {
+          delete loyaltyActiveNow[c.phone];
+          localStorage.setItem('cesar_barbearia_loyalty_active', JSON.stringify(loyaltyActiveNow));
+          showToast('Fidelidade Removida', `${c.name} foi removido do programa fidelidade.`);
+        } else {
+          loyaltyActiveNow[c.phone] = true;
+          localStorage.setItem('cesar_barbearia_loyalty_active', JSON.stringify(loyaltyActiveNow));
+          showToast('👑 Fidelidade Ativada', `${c.name} foi adicionado ao programa fidelidade. Os selos serão registrados automaticamente!`);
+        }
+
+        // Re-render list
+        const currentQuery = ($('manage-loyalty-search') || {}).value || '';
+        renderManageLoyaltyList(currentQuery.toLowerCase());
+
+        // Refresh CRM if visible
+        if (state.currentTab === 'tab-crm') renderCRMTab();
+      };
+
+      list.appendChild(row);
+    });
+  }
+
   // ── TAB 4: CRM & FIDELIDADE ADMIN ────────────────────────────────────────
   function setupCRMAdmin() {
     $('crm-search-input').oninput = (e) => {
@@ -1951,6 +2026,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const customersMap = {};
 
     state.bookings.forEach(b => {
+      const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+      if (isBlock) return;
+
       const phone = b.clientPhone;
       if (!phone) return;
 
@@ -1994,12 +2072,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Read manual fidelidade stamp values
     const clientFidelidades = JSON.parse(localStorage.getItem('cesar_barbearia_fidelidades') || '{}');
+    const loyaltyActive = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
 
     filtered.forEach(c => {
       const tr = document.createElement('tr');
       
-      // Calculate active stamps count: uses local storage override, fallback to completed visits % 10
-      const stamps = clientFidelidades[c.phone] !== undefined ? clientFidelidades[c.phone] : (c.visits % 10);
+      // Calculate active stamps count: uses local storage override, fallback to 0 (only manual addition)
+      const stamps = clientFidelidades[c.phone] !== undefined ? clientFidelidades[c.phone] : 0;
+      const isLoyaltyActive = loyaltyActive[c.phone] === true;
 
       tr.innerHTML = `
         <td data-label="Cliente" style="font-weight:600;">${c.name}</td>
@@ -2008,7 +2088,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <td data-label="Visitas" style="font-weight:700;color:var(--gold);">${c.visits} cortes</td>
         <td data-label="Último Agendamento" style="font-size:12px;color:var(--text-muted);">${c.lastBookingStr}</td>
         <td data-label="Fidelidade">
-          <span class="crm-fidelidade-badge">👑 ${stamps}/10</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="crm-fidelidade-badge">👑 ${stamps}/10</span>
+            ${isLoyaltyActive ? '<span class="loyalty-active-badge">Auto ✓</span>' : ''}
+          </div>
         </td>
         <td data-label="Ações" style="text-align: right;">
           <button class="btn-primary loyalty-card-btn" data-phone="${c.phone}" data-name="${c.name}">Fidelidade</button>
