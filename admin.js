@@ -905,12 +905,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const dropdownWidth = globalDropdown.offsetWidth || 120;
             const dropdownHeight = globalDropdown.offsetHeight || 132;
 
-            const left = rect.left - dropdownWidth - 8;
-            const top = rect.top + (rect.height / 10) - (dropdownHeight / 1.8);
+            // Use window scroll to robustly place it using absolute positioning
+            const scrollY = window.scrollY || document.documentElement.scrollTop;
+            const scrollX = window.scrollX || document.documentElement.scrollLeft;
+
+            const left = rect.left + scrollX - dropdownWidth - 8;
+            const top = rect.top + scrollY + (rect.height / 8) - (dropdownHeight / 1.8);
 
             globalDropdown.style.left = `${left}px`;
             globalDropdown.style.top = `${top}px`;
-            globalDropdown.style.position = 'fixed';
+            globalDropdown.style.position = 'absolute';
           };
 
           upcomingList.appendChild(itemEl);
