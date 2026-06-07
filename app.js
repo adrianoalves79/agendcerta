@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (isBooked) {
         btn.disabled = true;
         btn.classList.add('booked');
-        btn.title = hasAllDayBlock ? "Dia inteiro bloqueado" : "Horário já reservado";
+        btn.title = hasAllDayBlock ? "Sem atendimentos nesta data" : "Horário já reservado";
       } else {
         if (state.time === t) btn.classList.add('selected');
         btn.addEventListener('click', () => {

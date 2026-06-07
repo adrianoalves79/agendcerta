@@ -16,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     bookings: [],
     services: [],
     professionals: [],
-    crmSearchQuery: ''
+    crmSearchQuery: '',
+    selectedProfFilter: 'todos'
   };
 
   // Expose state globally for easy access if needed
@@ -382,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function renderAll() {
     // Refresh database view in state
     await loadDatabase();
-    populateCalendarProfSelect();
+    renderProfessionalFilters();
 
     if (state.currentTab === 'tab-dashboard') {
       renderDashboard();
@@ -624,20 +625,137 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Date(dateStr);
   }
 
-  function populateCalendarProfSelect() {
-    const select = $('calendar-prof-select');
-    if (!select) return;
-    const currentVal = select.value || 'todos';
-    select.innerHTML = '<option value="todos">Todos os Profissionais</option>';
-    state.professionals.forEach(p => {
-      if (p.active !== false) {
-        const opt = document.createElement('option');
-        opt.value = p.name;
-        opt.textContent = p.name;
-        select.appendChild(opt);
+  function getProfColor(profName) {
+    const index = state.professionals.findIndex(p => p.name === profName);
+    const palette = [
+      { name: 'blue', emoji: '🔵', hex: '#0a84ff', lightHex: 'rgba(10, 132, 255, 0.15)', textHex: '#0a84ff' },
+      { name: 'green', emoji: '🟢', hex: '#30d158', lightHex: 'rgba(48, 209, 88, 0.15)', textHex: '#30d158' },
+      { name: 'orange', emoji: '🟠', hex: '#ff9f0a', lightHex: 'rgba(255, 159, 10, 0.15)', textHex: '#ff9f0a' },
+      { name: 'purple', emoji: '🟣', hex: '#bf5af2', lightHex: 'rgba(191, 90, 242, 0.15)', textHex: '#bf5af2' },
+      { name: 'red', emoji: '🔴', hex: '#ff453a', lightHex: 'rgba(255, 69, 58, 0.15)', textHex: '#ff453a' },
+      { name: 'yellow', emoji: '🟡', hex: '#ffd60a', lightHex: 'rgba(255, 214, 10, 0.15)', textHex: '#ffd60a' }
+    ];
+    if (index === -1) {
+      return palette[0];
+    }
+    return palette[index % palette.length];
+  }
+
+  function renderProfessionalFilters() {
+    const container = $('calendar-prof-filter-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // Selecionar o primeiro profissional por padrão caso selecionado seja 'todos' ou inexistente
+    const activeProfs = state.professionals.filter(p => p.active !== false);
+    if (!state.selectedProfFilter || state.selectedProfFilter === 'todos') {
+      if (activeProfs.length > 0) {
+        state.selectedProfFilter = activeProfs[0].name;
+      } else {
+        state.selectedProfFilter = 'César';
       }
+    }
+    
+    // Criar botão para cada profissional (sem a opção Todos)
+    activeProfs.forEach(p => {
+      const profColor = getProfColor(p.name);
+      const btn = document.createElement('button');
+      btn.className = `prof-filter-btn ${state.selectedProfFilter === p.name ? 'active' : ''}`;
+      btn.innerHTML = `${profColor.emoji} ${p.name}`;
+      
+      btn.style.setProperty('--btn-color', profColor.hex);
+      btn.style.setProperty('--btn-light-color', profColor.lightHex);
+      
+      btn.onclick = () => {
+        state.selectedProfFilter = p.name;
+        renderProfessionalFilters();
+        renderMiniPicker();
+        renderDailyAgenda();
+      };
+      container.appendChild(btn);
     });
-    select.value = currentVal;
+  }
+
+  function showUnlockConfirmPopup(cell, dStr, currentCellDate) {
+    const existing = document.querySelector('.custom-confirm-popup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.className = 'custom-confirm-popup';
+    popup.innerHTML = `
+      <p>Dia bloqueado🔏!</p>
+      <p>Deseja desbloquear?</p>
+      <div class="confirm-actions">
+        <button class="btn-confirm-yes">Sim</button>
+        <button class="btn-confirm-no">Não</button>
+      </div>
+    `;
+
+    document.body.appendChild(popup);
+
+    const rect = cell.getBoundingClientRect();
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    const scrollX = window.scrollX || document.documentElement.scrollLeft;
+
+    popup.style.position = 'absolute';
+    popup.style.left = `${rect.left + scrollX + rect.width / 2}px`;
+    popup.style.top = `${rect.top + scrollY - 10}px`;
+    popup.style.transform = 'translate(-50%, -100%)';
+
+    popup.querySelector('.btn-confirm-yes').onclick = async (e) => {
+      e.stopPropagation();
+      popup.remove();
+      
+      const blocks = state.bookings.filter(b => {
+        if (b.status === 'Cancelado') return false;
+        const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+        const matchDate = parseLocalDate(b.date).toDateString() === dStr;
+        const matchProf = state.selectedProfFilter === 'todos' || b.professional === state.selectedProfFilter;
+        return isBlockRecord && b.time === 'Dia Inteiro' && matchDate && matchProf;
+      });
+
+      if (blocks.length > 0) {
+        const blockIds = blocks.map(b => b.id);
+        try {
+          const { error } = await supabase
+            .from('agendamentos')
+            .update({ status: 'Cancelado' })
+            .in('id', blockIds);
+          if (error) throw error;
+          
+          blocks.forEach(b => b.status = 'Cancelado');
+          showToast("Dia Desbloqueado", "O bloqueio do dia inteiro foi liberado.");
+          
+          state.selectedDate = currentCellDate;
+          state.pickerDate = new Date(currentCellDate);
+          renderAll();
+        } catch (err) {
+          console.error("Erro ao desbloquear dia:", err);
+          alert("Erro ao desbloquear dia. Tente novamente.");
+        }
+      }
+    };
+
+    popup.querySelector('.btn-confirm-no').onclick = (e) => {
+      e.stopPropagation();
+      popup.remove();
+      
+      state.selectedDate = currentCellDate;
+      state.pickerDate = new Date(currentCellDate);
+      renderMiniPicker();
+      renderDailyAgenda();
+    };
+
+    const closeOnOutsideClick = (e) => {
+      if (!popup.contains(e.target) && e.target !== cell) {
+        popup.remove();
+        document.removeEventListener('click', closeOnOutsideClick);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('click', closeOnOutsideClick);
+    }, 50);
   }
 
   function parsePrice(str) {
@@ -952,10 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     });
 
-    // professional filter
-    $('calendar-prof-select').onchange = () => {
-      renderDailyAgenda();
-    };
+    // Os botões dinâmicos de profissional gerenciam seus próprios cliques e chamam renderDailyAgenda()
   }
 
   // Render mini calendar picker in sidebar
@@ -963,6 +1078,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const pDate = state.pickerDate;
     const sDate = state.selectedDate;
     
+    if (!state.calendarViewMode) {
+      state.calendarViewMode = localStorage.getItem('cesar_calendar_view_mode') || 'week';
+    }
+
+    const toggleBtn = $('btn-calendar-view-toggle');
+    if (toggleBtn) {
+      if (state.calendarViewMode === 'month') {
+        toggleBtn.classList.add('active');
+      } else {
+        toggleBtn.classList.remove('active');
+      }
+      toggleBtn.onclick = (e) => {
+        e.stopPropagation();
+        const newMode = state.calendarViewMode === 'week' ? 'month' : 'week';
+        state.calendarViewMode = newMode;
+        localStorage.setItem('cesar_calendar_view_mode', newMode);
+        renderMiniPicker();
+      };
+    }
+
     const monthsName = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     
@@ -971,56 +1106,190 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = $('picker-days-grid');
     grid.innerHTML = '';
 
-    const firstDay = new Date(pDate.getFullYear(), pDate.getMonth(), 1).getDay();
-    const totalDays = new Date(pDate.getFullYear(), pDate.getMonth() + 1, 0).getDate();
+    if (state.calendarViewMode === 'month') {
+      const firstDay = new Date(pDate.getFullYear(), pDate.getMonth(), 1).getDay();
+      const totalDays = new Date(pDate.getFullYear(), pDate.getMonth() + 1, 0).getDate();
 
-    // Blanks
-    for (let i = 0; i < firstDay; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'picker-day-cell empty';
-      grid.appendChild(cell);
-    }
-
-    // Days cells
-    for (let d = 1; d <= totalDays; d++) {
-      const currentCellDate = new Date(pDate.getFullYear(), pDate.getMonth(), d);
-      const cell = document.createElement('button');
-      cell.className = 'picker-day-cell';
-      cell.textContent = d;
-
-      // Has bookings marker
-      const dStr = currentCellDate.toDateString();
-      const dayBookings = state.bookings.filter(b => parseLocalDate(b.date).toDateString() === dStr && b.status !== 'Cancelado');
-      if (dayBookings.length > 0) {
-        cell.classList.add('has-bookings');
+      // Blanks
+      for (let i = 0; i < firstDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'picker-day-cell empty';
+        grid.appendChild(cell);
       }
 
-      // Today
-      if (currentCellDate.toDateString() === new Date().toDateString()) {
-        cell.classList.add('today');
+      // Days cells
+      for (let d = 1; d <= totalDays; d++) {
+        const currentCellDate = new Date(pDate.getFullYear(), pDate.getMonth(), d);
+        const cell = document.createElement('button');
+        cell.className = 'picker-day-cell view-month';
+        cell.textContent = d;
+
+        const dStr = currentCellDate.toDateString();
+        
+        // Filtrar agendamentos do dia de acordo com o profissional selecionado
+        const dayBookings = state.bookings.filter(b => {
+          const matchDate = parseLocalDate(b.date).toDateString() === dStr;
+          const matchProf = state.selectedProfFilter === 'todos' || b.professional === state.selectedProfFilter;
+          const matchStatus = b.status !== 'Cancelado';
+          return matchDate && matchProf && matchStatus;
+        });
+
+        // Verificar se há bloqueio de dia inteiro
+        const hasAllDayBlockOnDate = dayBookings.some(b => {
+          const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+          return isBlockRecord && b.time === 'Dia Inteiro';
+        });
+
+        // Today
+        if (currentCellDate.toDateString() === new Date().toDateString()) {
+          cell.classList.add('today');
+        }
+
+        // Selected
+        if (currentCellDate.toDateString() === sDate.toDateString()) {
+          cell.classList.add('selected');
+        }
+
+        if (hasAllDayBlockOnDate) {
+          cell.classList.add('day-blocked-x');
+          const spanX = document.createElement('span');
+          spanX.className = 'blocked-x-indicator';
+          spanX.textContent = '❌';
+          cell.appendChild(spanX);
+        } else if (dayBookings.length > 0) {
+          cell.classList.add('has-bookings');
+          
+          // Cor baseada no profissional do primeiro agendamento ativo
+          const firstBookingProf = dayBookings[0].professional;
+          const profColor = getProfColor(firstBookingProf);
+          
+          // Só aplica cor customizada se a célula não for a selecionada atualmente
+          if (currentCellDate.toDateString() !== sDate.toDateString()) {
+            cell.style.setProperty('color', profColor.hex, 'important');
+            cell.style.setProperty('background-color', profColor.lightHex, 'important');
+            cell.style.setProperty('border', `1px solid ${profColor.hex}`, 'important');
+            cell.style.setProperty('font-weight', '700', 'important');
+          }
+        }
+
+        cell.onclick = (e) => {
+          e.stopPropagation();
+          if (hasAllDayBlockOnDate) {
+            showUnlockConfirmPopup(cell, dStr, currentCellDate);
+            return;
+          }
+          
+          state.selectedDate = currentCellDate;
+          state.pickerDate = new Date(currentCellDate);
+          renderMiniPicker();
+          renderDailyAgenda();
+        };
+
+        grid.appendChild(cell);
       }
+    } else {
+      // WEEK VIEW
+      const startOfWeek = new Date(sDate);
+      const day = startOfWeek.getDay(); // Sunday is 0
+      startOfWeek.setDate(startOfWeek.getDate() - day);
 
-      // Selected
-      if (currentCellDate.toDateString() === sDate.toDateString()) {
-        cell.classList.add('selected');
+      for (let i = 0; i < 7; i++) {
+        const currentCellDate = new Date(startOfWeek);
+        currentCellDate.setDate(startOfWeek.getDate() + i);
+
+        const cell = document.createElement('button');
+        cell.className = 'picker-day-cell view-week';
+        cell.textContent = currentCellDate.getDate();
+
+        const dStr = currentCellDate.toDateString();
+        
+        // Filtrar agendamentos do dia de acordo com o profissional selecionado
+        const dayBookings = state.bookings.filter(b => {
+          const matchDate = parseLocalDate(b.date).toDateString() === dStr;
+          const matchProf = state.selectedProfFilter === 'todos' || b.professional === state.selectedProfFilter;
+          const matchStatus = b.status !== 'Cancelado';
+          return matchDate && matchProf && matchStatus;
+        });
+
+        // Verificar se há bloqueio de dia inteiro
+        const hasAllDayBlockOnDate = dayBookings.some(b => {
+          const isBlockRecord = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+          return isBlockRecord && b.time === 'Dia Inteiro';
+        });
+
+        // Today
+        if (currentCellDate.toDateString() === new Date().toDateString()) {
+          cell.classList.add('today');
+        }
+
+        // Selected
+        if (currentCellDate.toDateString() === sDate.toDateString()) {
+          cell.classList.add('selected');
+        }
+
+        if (hasAllDayBlockOnDate) {
+          cell.classList.add('day-blocked-x');
+          const spanX = document.createElement('span');
+          spanX.className = 'blocked-x-indicator';
+          spanX.textContent = '❌';
+          cell.appendChild(spanX);
+        } else if (dayBookings.length > 0) {
+          cell.classList.add('has-bookings');
+          
+          // Cor baseada no profissional do primeiro agendamento ativo
+          const firstBookingProf = dayBookings[0].professional;
+          const profColor = getProfColor(firstBookingProf);
+          
+          // Só aplica cor customizada se a célula não for a selecionada atualmente
+          if (currentCellDate.toDateString() !== sDate.toDateString()) {
+            cell.style.setProperty('color', profColor.hex, 'important');
+            cell.style.setProperty('background-color', profColor.lightHex, 'important');
+            cell.style.setProperty('border', `1px solid ${profColor.hex}`, 'important');
+            cell.style.setProperty('font-weight', '700', 'important');
+          }
+        }
+
+        cell.onclick = (e) => {
+          e.stopPropagation();
+          if (hasAllDayBlockOnDate) {
+            showUnlockConfirmPopup(cell, dStr, currentCellDate);
+            return;
+          }
+          
+          state.selectedDate = currentCellDate;
+          state.pickerDate = new Date(currentCellDate);
+          renderMiniPicker();
+          renderDailyAgenda();
+        };
+
+        grid.appendChild(cell);
       }
-
-      cell.onclick = () => {
-        state.selectedDate = currentCellDate;
-        renderMiniPicker();
-        renderDailyAgenda();
-      };
-
-      grid.appendChild(cell);
     }
 
     // Nav selectors
     $('picker-prev').onclick = () => {
-      state.pickerDate.setMonth(state.pickerDate.getMonth() - 1);
+      if (state.calendarViewMode === 'month') {
+        state.pickerDate.setMonth(state.pickerDate.getMonth() - 1);
+      } else {
+        const newSelected = new Date(state.selectedDate);
+        newSelected.setDate(newSelected.getDate() - 7);
+        state.selectedDate = newSelected;
+        state.pickerDate = new Date(newSelected);
+        renderDailyAgenda();
+      }
       renderMiniPicker();
     };
+    
     $('picker-next').onclick = () => {
-      state.pickerDate.setMonth(state.pickerDate.getMonth() + 1);
+      if (state.calendarViewMode === 'month') {
+        state.pickerDate.setMonth(state.pickerDate.getMonth() + 1);
+      } else {
+        const newSelected = new Date(state.selectedDate);
+        newSelected.setDate(newSelected.getDate() + 7);
+        state.selectedDate = newSelected;
+        state.pickerDate = new Date(newSelected);
+        renderDailyAgenda();
+      }
       renderMiniPicker();
     };
   }
@@ -1038,7 +1307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const daysWeekLong = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     $('calendar-selected-date-label').textContent = `${daysWeekLong[sDate.getDay()]}, ${sDate.getDate()} de ${sDate.toLocaleDateString('pt-BR', { month: 'long' })}`;
 
-    const selectedProf = $('calendar-prof-select').value;
+    const selectedProf = state.selectedProfFilter;
 
     // Filter day bookings
     let dayBookings = state.bookings.filter(b => {
@@ -1046,7 +1315,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const matchProf = selectedProf === 'todos' || b.professional === selectedProf;
       const matchStatus = agendaFilter === 'todos' || b.status === agendaFilter;
       
-      return matchDate && matchProf && matchStatus;
+      // Ocultar bloqueios de dia inteiro da listagem da agenda diária
+      const isAllDayBlock = b.serviceId === 'bloqueio' && b.time === 'Dia Inteiro';
+      
+      return matchDate && matchProf && matchStatus && !isAllDayBlock;
     });
 
     // Sort by time
@@ -1073,8 +1345,11 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'agenda-item';
       
       const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
+      const profColor = getProfColor(b.professional || 'César');
       
-      // Render status indicators
+      // Aplicar cor da borda esquerda baseada na cor do profissional
+      card.style.borderLeft = `4px solid ${profColor.hex}`;
+      
       let actionsHTML = '';
       if (isBlock) {
         if (b.status === 'Confirmado' || b.status === 'Pendente') {
@@ -1095,22 +1370,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      const hasObsHTML = b.clientObs ? `<div class="agenda-obs"><strong>Obs:</strong> ${b.clientObs}</div>` : '';
+      const hasObsHTML = b.clientObs 
+        ? `<div class="agenda-obs" style="border-left-color: ${isBlock ? 'var(--color-red)' : 'var(--gold)'};"><strong>Obs:</strong> ${b.clientObs}</div>`
+        : '';
 
       if (isBlock) {
-        const isAllDay = b.time === 'Dia Inteiro';
         card.innerHTML = `
           <div class="agenda-time">
-            <span class="agenda-time-val">${isAllDay ? 'Dia Todo' : b.time}</span>
-            <span class="agenda-time-dur">${isAllDay ? 'Lembrete' : b.serviceDuration}</span>
+            <span class="agenda-time-val">${b.time}</span>
+            <span class="agenda-time-dur">${b.serviceDuration}</span>
           </div>
           <div class="agenda-detail">
             <div class="agenda-title-row">
-              <span class="agenda-client-name" style="color: var(--color-red); font-weight:700;">🚫 ${isAllDay ? 'DIA INTEIRO BLOQUEADO' : 'HORÁRIO BLOQUEADO'}</span>
-              <span class="agenda-service-badge" style="background-color: rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); color: var(--color-red);">${b.professional || 'César'}</span>
+              <span class="agenda-client-name" style="color: var(--color-red); font-weight:700;">🚫 HORÁRIO BLOQUEADO</span>
+              <span class="agenda-service-badge" style="background-color: rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); color: var(--color-red);">${profColor.emoji} ${b.professional || 'César'}</span>
             </div>
             <div class="agenda-meta-row">
-              <span class="agenda-meta-item">${isAllDay ? 'A agenda completa deste dia está bloqueada para este profissional.' : 'Este horário está reservado para bloqueio interno da agenda.'}</span>
+              <span class="agenda-meta-item">Este horário está reservado para bloqueio interno da agenda.</span>
             </div>
             ${hasObsHTML}
           </div>
@@ -1136,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 ${b.clientPhone}
               </span>
-              <span class="agenda-meta-item">💈 ${b.professional || 'César'}</span>
+              <span class="agenda-meta-item">💈 ${profColor.emoji} ${b.professional || 'César'}</span>
               <span class="agenda-meta-item" style="color: var(--gold); font-weight:700;">${b.servicePrice}</span>
             </div>
             ${hasObsHTML}
@@ -1371,7 +1647,12 @@ document.addEventListener('DOMContentLoaded', () => {
         nameGroup.classList.add('hidden');
         phoneGroup.classList.add('hidden');
         serviceGroup.classList.add('hidden');
-        obsGroup.classList.add('hidden');
+        
+        // Show observations field as Motivo
+        obsGroup.classList.remove('hidden');
+        const obsLabel = obsGroup.querySelector('label');
+        if (obsLabel) obsLabel.textContent = "Motivo (Opcional)";
+        obsInput.placeholder = "Ex: Consulta médica, compromisso, treinamento, férias...";
 
         // Show all day checkbox
         if (allDayField) allDayField.classList.remove('hidden');
@@ -1389,7 +1670,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Pre-fill values
         nameInput.value = "Horário Bloqueado";
         phoneInput.value = "(00) 00000-0000";
-        obsInput.value = "Bloqueio manual de agenda.";
+        obsInput.value = "";
       } else {
         // Set titles
         if (titleEl) titleEl.textContent = "Novo Agendamento Manual";
@@ -1399,7 +1680,12 @@ document.addEventListener('DOMContentLoaded', () => {
         nameGroup.classList.remove('hidden');
         phoneGroup.classList.remove('hidden');
         serviceGroup.classList.remove('hidden');
+        
+        // Reset observations label
         obsGroup.classList.remove('hidden');
+        const obsLabel = obsGroup.querySelector('label');
+        if (obsLabel) obsLabel.textContent = "Observações (Opcional)";
+        obsInput.placeholder = "Observações de preferência, restrições...";
 
         // Hide all day checkbox
         if (allDayField) allDayField.classList.add('hidden');
@@ -1555,7 +1841,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const { error } = await supabase.from('agendamentos').insert([singleBlock]);
           if (error) throw error;
           
-          showToast("Agenda Bloqueada", `O dia todo foi bloqueado com sucesso para ${inputProf}.`);
+          showToast("Ausência Registrada", `A ausência de ${inputProf} foi registrada com sucesso.`);
         } catch (err) {
           console.error("Erro ao salvar bloqueio do dia todo:", err);
           alert("Erro ao registrar bloqueio do dia todo. Tente novamente.");
@@ -2015,6 +2301,13 @@ document.addEventListener('DOMContentLoaded', () => {
       state.crmSearchQuery = e.target.value.toLowerCase();
       renderCRMTab();
     };
+
+    const btnCrmManage = $('btn-crm-manage-loyalty');
+    if (btnCrmManage) {
+      btnCrmManage.onclick = () => {
+        openManageLoyaltyModal();
+      };
+    }
   }
 
   function renderCRMTab() {
@@ -2056,7 +2349,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    const customers = Object.values(customersMap);
+    const loyaltyActive = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
+    const customers = Object.values(customersMap).filter(c => loyaltyActive[c.phone] === true);
     
     // Filter by search
     const filtered = customers.filter(c => {
@@ -2072,7 +2366,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Read manual fidelidade stamp values
     const clientFidelidades = JSON.parse(localStorage.getItem('cesar_barbearia_fidelidades') || '{}');
-    const loyaltyActive = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
 
     filtered.forEach(c => {
       const tr = document.createElement('tr');

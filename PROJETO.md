@@ -1,7 +1,7 @@
 # 📋 AgendCerta — Relatório Técnico Completo do Projeto
 
 > **Última atualização:** 07/06/2026  
-> **Commit atual:** `06da938`  
+> **Commit atual:** `main` (pós-melhorias de bloqueio e CRM)  
 > **Branch:** `main` → GitHub: `adrianoalves79/agendcerta`  
 > **Produção:** Vercel (deploy automático a cada push no `main`)
 
@@ -267,6 +267,8 @@ Alisamento Americano  R$ 70,00   90min
 
 ### CRM (Tabela de Clientes)
 - Clientes compilados dinamicamente dos agendamentos (não há tabela separada de clientes)
+- Apenas clientes com o programa fidelidade ativo (`loyaltyActive[phone] === true`) são listados na aba principal do CRM.
+- Botão de atalho "Gerenciar Cartões" disponível diretamente na aba CRM para incluir ou remover clientes do programa.
 - Agrupados por `clientPhone`
 - Colunas: Nome, WhatsApp, Nascimento, Visitas, Último Agendamento, Fidelidade, Ações
 - Busca em tempo real por nome ou telefone
@@ -380,6 +382,11 @@ Modal `modal-manual-booking` com dois modos:
 1. **Modo Normal:** Nome, WhatsApp, Serviço, Profissional, Data, Horário, Obs
 2. **Modo Bloqueio:** oculta campos de cliente, exibe checkbox "Bloquear dia todo"
 
+### Regra de Bloqueio do Dia Inteiro
+- **Registro Único:** Ao selecionar "Bloquear o dia todo", cancela de forma automática (pedindo confirmação se houver clientes) os agendamentos já marcados para o dia e profissional. Grava um único registro de bloqueio no Supabase com `time: 'Dia Inteiro'` e duração `'Dia Todo'`.
+- **Prevenção de Concorrência & Colisão:** Desabilita todas as opções do seletor manual exibindo `(Dia Bloqueado)`. Na tela do cliente, os horários ficam indisponíveis com o balão `Sem atendimentos nesta data`. Validação em tempo real no checkout impede agendamentos em dias bloqueados.
+- **Rápida Leitura:** Exibição limpa na agenda diária como `📅 AUSÊNCIA REGISTRADA` (Lembrete). O registro é omitido da seção de "Próximos Agendamentos" para manter foco em clientes.
+
 Botões de acesso:
 - Dashboard: `qa-new-booking` (normal) e `qa-block-time` (bloqueio)
 - Calendário: `btn-manual-booking` (sidebar, modo normal)
@@ -468,6 +475,7 @@ Imagens de perfil e capa customizadas são salvas como Base64 no Supabase dentro
 
 | Data | Funcionalidade | Commit |
 |------|---------------|--------|
+| Jun/2026 | **Bloqueio de Dia Inteiro otimizado e CRM restrito a clientes ativos** | `main` |
 | Jun/2026 | Correções de layout mobile e bloqueio de agenda | `3fbe6f4` |
 | Jun/2026 | Fila de próximos agendamentos no dashboard (realtime) | anterior |
 | Jun/2026 | **Sistema de Clientes Fidelidade completo** | `06da938` |

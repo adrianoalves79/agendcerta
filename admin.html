@@ -285,10 +285,10 @@
               
               <!-- Seletor de Profissional -->
               <div class="filter-group">
-                <label for="calendar-prof-select">Filtrar por Profissional</label>
-                <select id="calendar-prof-select" class="admin-select">
-                  <option value="todos">Todos os Profissionais</option>
-                </select>
+                <label>Filtrar por Profissional</label>
+                <div id="calendar-prof-filter-list" class="prof-filter-list">
+                  <!-- Preenchido via JS -->
+                </div>
               </div>
 
               <!-- Mini Calendário de Seleção -->
@@ -297,7 +297,12 @@
                   <button id="picker-prev" class="picker-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 19l-7-7 7-7" /></svg>
                   </button>
-                  <h3 id="picker-month-year">Janeiro 2026</h3>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <h3 id="picker-month-year" style="margin: 0;">Janeiro 2026</h3>
+                    <button id="btn-calendar-view-toggle" class="picker-view-toggle-btn" title="Alternar visão Semana/Mês">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </button>
+                  </div>
                   <button id="picker-next" class="picker-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5l7 7-7 7" /></svg>
                   </button>
@@ -402,8 +407,14 @@
               </svg>
               <input type="text" id="crm-search-input" placeholder="Buscar cliente por nome ou WhatsApp..." class="admin-input">
             </div>
+            
+            <button class="btn-secondary" id="btn-crm-manage-loyalty" style="flex-shrink: 0; white-space: nowrap;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+              Gerenciar Cartões
+            </button>
+
             <div class="crm-summary-info">
-              <span>Total de Clientes na Base: <strong id="crm-total-count">0</strong></span>
+              <span>Total de Clientes Fidelidade: <strong id="crm-total-count">0</strong></span>
             </div>
           </div>
 

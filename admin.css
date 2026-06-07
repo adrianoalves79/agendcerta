@@ -786,6 +786,66 @@ body {
   letter-spacing: 0.5px;
 }
 
+.prof-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.prof-filter-btn {
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.prof-filter-btn:hover {
+  color: #fff;
+  border-color: var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.prof-filter-btn.active {
+  background-color: var(--btn-light-color, rgba(200, 146, 42, 0.1)) !important;
+  color: #fff !important;
+  border-color: var(--btn-color, var(--gold)) !important;
+  box-shadow: 0 0 8px var(--btn-light-color, rgba(200, 146, 42, 0.1));
+}
+
+.picker-day-cell.day-blocked-x {
+  position: relative;
+  font-weight: 700;
+}
+
+.blocked-x-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #ff453a;
+  line-height: 1;
+  pointer-events: none;
+  font-weight: bold;
+  opacity: 0.85;
+  z-index: 2;
+}
+
 /* Widget mini calendar */
 .calendar-picker-widget {
   border: 1px solid var(--border-light);
@@ -894,6 +954,59 @@ body {
 
 .picker-day-cell.selected.has-bookings::after {
   background-color: #000;
+}
+
+/* --- VIEW MONTH OVERRIDES --- */
+.picker-day-cell.view-month.has-bookings:not(.selected) {
+  color: var(--gold-light) !important;
+  background-color: rgba(200, 146, 42, 0.08) !important;
+  border: 1px solid rgba(200, 146, 42, 0.25) !important;
+  font-weight: 700;
+}
+
+.picker-day-cell.view-month.has-bookings::after {
+  display: none !important;
+}
+
+/* --- VIEW WEEK OVERRIDES --- */
+.picker-day-cell.view-week.has-bookings::after {
+  border-radius: 1px !important;
+  width: 10px !important;
+  height: 2px !important;
+  bottom: 3px !important;
+}
+
+/* --- TOGGLE BUTTON STYLE --- */
+.picker-view-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.picker-view-toggle-btn:hover {
+  color: var(--gold);
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.picker-view-toggle-btn.active {
+  color: var(--gold);
+  background-color: rgba(200, 146, 42, 0.1);
+  border: 1px solid rgba(200, 146, 42, 0.2);
+}
+
+.picker-view-toggle-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .picker-day-cell.empty {
@@ -1954,6 +2067,20 @@ select option {
 
   .agenda-time-dur {
     margin-top: 0;
+  }
+
+  .notice-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .notice-icon {
+    justify-content: flex-start;
+  }
+
+  .notice-actions {
+    justify-content: flex-start;
+    padding-left: 0;
   }
 }
 
@@ -3534,5 +3661,210 @@ select option {
 /* Auto-stamp notification toast variation */
 .toast.stamp-auto {
   border-color: var(--color-green);
+}
+
+/* ==========================================================================
+   DAILY AGENDA NOTICES / AVISOS DO DIA
+   ========================================================================== */
+.agenda-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-title);
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #fff;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.agenda-section-count {
+  background-color: var(--gold);
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.notice-card {
+  background-color: rgba(200, 146, 42, 0.03);
+  border: 1px dashed var(--gold);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  transition: all 0.25s ease;
+}
+
+.notice-card:hover {
+  background-color: rgba(200, 146, 42, 0.06);
+  border-style: solid;
+}
+
+.notice-icon {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notice-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notice-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.notice-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+.notice-badge {
+  background-color: rgba(200, 146, 42, 0.1);
+  border: 1px solid rgba(200, 146, 42, 0.2);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.notice-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.notice-reason {
+  font-size: 12px;
+  color: var(--text-muted);
+  background-color: rgba(0, 0, 0, 0.2);
+  border-left: 2px solid var(--gold);
+  padding: 4px 10px;
+  border-radius: 0 4px 4px 0;
+  margin-top: 4px;
+  width: fit-content;
+  max-width: 500px;
+}
+
+.notice-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-left: 16px;
+}
+
+/* Custom Tooltip Confirm Popup */
+.custom-confirm-popup {
+  background-color: #121214;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  text-align: center;
+  width: max-content;
+  max-content: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-body);
+  animation: fadeInTooltip 0.15s ease-out;
+}
+
+@keyframes fadeInTooltip {
+  from { opacity: 0; transform: translate(-50%, -90%); }
+  to { opacity: 1; transform: translate(-50%, -100%); }
+}
+
+.custom-confirm-popup p {
+  margin: 0;
+  font-size: 13px;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.custom-confirm-popup .confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.custom-confirm-popup button {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.custom-confirm-popup .btn-confirm-yes {
+  background: var(--gold-gradient);
+  color: #000;
+}
+
+.custom-confirm-popup .btn-confirm-yes:hover {
+  filter: brightness(1.15);
+}
+
+.custom-confirm-popup .btn-confirm-no {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+}
+
+.custom-confirm-popup .btn-confirm-no:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* Tooltip Arrow */
+.custom-confirm-popup::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0;
+  border-style: solid;
+  border-color: #121214 transparent;
+  display: block;
+  width: 0;
+}
+
+.custom-confirm-popup::before {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 7px 7px 0;
+  border-style: solid;
+  border-color: var(--gold) transparent;
+  display: block;
+  width: 0;
+  z-index: -1;
 }
 
