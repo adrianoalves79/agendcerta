@@ -1127,12 +1127,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const dStr = currentCellDate.toDateString();
         
         // Filtrar agendamentos do dia de acordo com o profissional selecionado
-        const dayBookings = state.bookings.filter(b => {
+        let dayBookings = state.bookings.filter(b => {
           const matchDate = parseLocalDate(b.date).toDateString() === dStr;
           const matchProf = state.selectedProfFilter === 'todos' || b.professional === state.selectedProfFilter;
           const matchStatus = b.status !== 'Cancelado';
           return matchDate && matchProf && matchStatus;
         });
+
+        // Se não for dia de trabalho, ignorar bloqueios
+        const openDays = (state.config && state.config.openDays) ? state.config.openDays : [1, 2, 3, 4, 5, 6];
+        const isWorkingDay = openDays.includes(currentCellDate.getDay());
+        if (!isWorkingDay) {
+          dayBookings = dayBookings.filter(b => b.serviceId !== 'bloqueio' && b.clientName !== 'Horário Bloqueado');
+        }
 
         // Verificar se há bloqueio de dia inteiro
         const hasAllDayBlockOnDate = dayBookings.some(b => {
@@ -1148,6 +1155,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Selected
         if (currentCellDate.toDateString() === sDate.toDateString()) {
           cell.classList.add('selected');
+        }
+
+        // Past day
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        if (currentCellDate < todayMidnight) {
+          cell.classList.add('past-day');
         }
 
         if (hasAllDayBlockOnDate) {
@@ -1190,11 +1204,13 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       // WEEK VIEW
       const startOfWeek = new Date(sDate);
+      startOfWeek.setHours(0, 0, 0, 0);
       const day = startOfWeek.getDay(); // Sunday is 0
       startOfWeek.setDate(startOfWeek.getDate() - day);
 
       for (let i = 0; i < 7; i++) {
         const currentCellDate = new Date(startOfWeek);
+        currentCellDate.setHours(0, 0, 0, 0);
         currentCellDate.setDate(startOfWeek.getDate() + i);
 
         const cell = document.createElement('button');
@@ -1204,12 +1220,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const dStr = currentCellDate.toDateString();
         
         // Filtrar agendamentos do dia de acordo com o profissional selecionado
-        const dayBookings = state.bookings.filter(b => {
+        let dayBookings = state.bookings.filter(b => {
           const matchDate = parseLocalDate(b.date).toDateString() === dStr;
           const matchProf = state.selectedProfFilter === 'todos' || b.professional === state.selectedProfFilter;
           const matchStatus = b.status !== 'Cancelado';
           return matchDate && matchProf && matchStatus;
         });
+
+        // Se não for dia de trabalho, ignorar bloqueios
+        const openDays = (state.config && state.config.openDays) ? state.config.openDays : [1, 2, 3, 4, 5, 6];
+        const isWorkingDay = openDays.includes(currentCellDate.getDay());
+        if (!isWorkingDay) {
+          dayBookings = dayBookings.filter(b => b.serviceId !== 'bloqueio' && b.clientName !== 'Horário Bloqueado');
+        }
 
         // Verificar se há bloqueio de dia inteiro
         const hasAllDayBlockOnDate = dayBookings.some(b => {
@@ -1225,6 +1248,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Selected
         if (currentCellDate.toDateString() === sDate.toDateString()) {
           cell.classList.add('selected');
+        }
+
+        // Past day
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        if (currentCellDate < todayMidnight) {
+          cell.classList.add('past-day');
         }
 
         if (hasAllDayBlockOnDate) {
@@ -1309,16 +1339,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selectedProf = state.selectedProfFilter;
 
+    // Check if there are active hourly blocks for this professional and date
+    const hasHourlyBlocks = state.bookings.some(b => {
+      const matchDate = parseLocalDate(b.date).toDateString() === dateStr;
+      const matchProf = selectedProf === 'todos' || b.professional === selectedProf;
+      const isBlockRecord = b.serviceId === 'bloqueio';
+      return matchDate && matchProf && isBlockRecord && b.time !== 'Dia Inteiro' && b.status !== 'Cancelado';
+    });
+
+    const blockBtn = document.getElementById('filter-btn-blocked');
+    if (blockBtn) {
+      if (hasHourlyBlocks) {
+        blockBtn.style.display = 'flex';
+      } else {
+        blockBtn.style.display = 'none';
+        if (agendaFilter === 'Bloqueado') {
+          agendaFilter = 'todos';
+          document.querySelectorAll('.view-filters .btn-filter-status').forEach(b => {
+            if (b.dataset.filter === 'todos') {
+              b.classList.add('active');
+            } else {
+              b.classList.remove('active');
+            }
+          });
+        }
+      }
+    }
+
     // Filter day bookings
     let dayBookings = state.bookings.filter(b => {
       const matchDate = parseLocalDate(b.date).toDateString() === dateStr;
       const matchProf = selectedProf === 'todos' || b.professional === selectedProf;
-      const matchStatus = agendaFilter === 'todos' || b.status === agendaFilter;
       
-      // Ocultar bloqueios de dia inteiro da listagem da agenda diária
-      const isAllDayBlock = b.serviceId === 'bloqueio' && b.time === 'Dia Inteiro';
+      const isBlockRecord = b.serviceId === 'bloqueio';
       
-      return matchDate && matchProf && matchStatus && !isAllDayBlock;
+      if (agendaFilter === 'Bloqueado') {
+        // Mostrar apenas bloqueios de horário ativos (não dia inteiro)
+        return matchDate && matchProf && isBlockRecord && b.time !== 'Dia Inteiro' && b.status !== 'Cancelado';
+      } else {
+        // Mostrar agendamentos comuns de acordo com o status, ocultando todos os registros de bloqueio
+        const matchStatus = agendaFilter === 'todos' || b.status === agendaFilter;
+        return matchDate && matchProf && matchStatus && !isBlockRecord;
+      }
     });
 
     // Sort by time
