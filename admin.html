@@ -157,7 +157,7 @@
           <!-- Cards de Métricas -->
           <div class="dashboard-metrics-grid">
             
-            <div class="db-metric-card">
+            <div class="db-metric-card clickable-card" id="card-metric-today">
               <div class="db-metric-header">
                 <span class="db-metric-icon blue">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -167,7 +167,7 @@
               <p class="db-metric-value" id="db-metric-today-count">0</p>
             </div>
 
-            <div class="db-metric-card">
+            <div class="db-metric-card clickable-card" id="card-metric-week">
               <div class="db-metric-header">
                 <span class="db-metric-icon blue">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -177,7 +177,7 @@
               <p class="db-metric-value" id="db-metric-week-count">0</p>
             </div>
 
-            <div class="db-metric-card">
+            <div class="db-metric-card clickable-card" id="card-metric-clients">
               <div class="db-metric-header">
                 <span class="db-metric-icon green">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
@@ -207,7 +207,7 @@
               <p class="db-metric-value" id="db-metric-week-revenue">R$ 0,00</p>
             </div>
 
-            <div class="db-metric-card">
+            <div class="db-metric-card clickable-card" id="card-metric-pending">
               <div class="db-metric-header">
                 <span class="db-metric-icon orange">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -224,11 +224,12 @@
             
             <!-- Próximos Agendamentos -->
             <div class="report-box dashboard-upcoming-box">
-              <div class="box-header" style="margin-bottom: 16px;">
+              <div class="box-header" style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="display: flex; align-items: center; gap: 8px; font-size: 16px;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--gold);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                   Próximos Agendamentos
                 </h2>
+                <div id="dashboard-list-header-actions"></div>
               </div>
               <div class="dashboard-upcoming-list" id="dashboard-upcoming-list">
                 <!-- Injetado dinamicamente via JS -->

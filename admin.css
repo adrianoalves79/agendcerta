@@ -3970,3 +3970,109 @@ select option {
   z-index: -1;
 }
 
+/* ==========================================================================
+   ALERTA DE AGENDAMENTO PENDENTE
+   ========================================================================== */
+:root {
+  --color-red: #ff453a;
+  --color-green: #30d158;
+  --color-yellow: #ffd60a;
+}
+
+.agenda-item.pending-alert {
+  border-left: 4px solid var(--color-red) !important;
+  background: rgba(255, 69, 58, 0.05); /* Fundo avermelhado bem suave */
+  box-shadow: 0 0 12px rgba(255, 69, 58, 0.15);
+  animation: pulse-border-pending 2s infinite ease-in-out;
+}
+
+@keyframes pulse-border-pending {
+  0% { border-left-color: #ff453a; }
+  50% { border-left-color: rgba(255, 69, 58, 0.4); }
+  100% { border-left-color: #ff453a; }
+}
+
+.pending-delay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(255, 69, 58, 0.15);
+  border: 1px solid rgba(255, 69, 58, 0.3);
+  color: #ff453a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.badge-status.pendente {
+  background-color: rgba(255, 69, 58, 0.1);
+  border: 1px solid rgba(255, 69, 58, 0.25);
+  color: #ff453a;
+}
+
+/* Efeito de hover nos cards clicáveis do dashboard */
+.db-metric-card.clickable-card {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.db-metric-card.clickable-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  box-shadow: 0 4px 12px rgba(200, 146, 42, 0.15);
+}
+
+/* Card de métrica pendente pulsante sutilmente */
+.db-metric-card.pulse-alert {
+  border-color: rgba(255, 69, 58, 0.4) !important;
+  box-shadow: 0 0 15px rgba(255, 69, 58, 0.15);
+  animation: pulse-card-glow 3s infinite ease-in-out;
+}
+
+.db-metric-card.pulse-alert .db-metric-icon.orange {
+  background: rgba(255, 69, 58, 0.15) !important;
+  color: #ff453a !important;
+  animation: pulse-icon-glow 3s infinite ease-in-out;
+}
+
+.db-metric-card.clickable-card.pulse-alert:hover {
+  border-color: #ff453a !important;
+  box-shadow: 0 4px 15px rgba(255, 69, 58, 0.3) !important;
+}
+
+@keyframes pulse-card-glow {
+  0% {
+    border-color: rgba(255, 69, 58, 0.3);
+    box-shadow: 0 0 10px rgba(255, 69, 58, 0.05);
+  }
+  50% {
+    border-color: rgba(255, 69, 58, 0.6);
+    box-shadow: 0 0 20px rgba(255, 69, 58, 0.25);
+  }
+  100% {
+    border-color: rgba(255, 69, 58, 0.3);
+    box-shadow: 0 0 10px rgba(255, 69, 58, 0.05);
+  }
+}
+
+@keyframes pulse-icon-glow {
+  0% {
+    color: rgba(255, 69, 58, 0.7);
+    box-shadow: 0 0 4px rgba(255, 69, 58, 0.1);
+  }
+  50% {
+    color: #ff453a;
+    box-shadow: 0 0 12px rgba(255, 69, 58, 0.3);
+  }
+  100% {
+    color: rgba(255, 69, 58, 0.7);
+    box-shadow: 0 0 4px rgba(255, 69, 58, 0.1);
+  }
+}
+
+
