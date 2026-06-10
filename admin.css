@@ -4075,4 +4075,56 @@ select option {
   }
 }
 
+/* Efeito de card ativo selecionado */
+.db-metric-card.clickable-card {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.db-metric-card.clickable-card:focus-visible {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 10px rgba(200, 146, 42, 0.4) !important;
+}
+.db-metric-card.clickable-card.active-metric {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 15px rgba(200, 146, 42, 0.45) !important;
+  background-color: rgba(200, 146, 42, 0.05) !important;
+  transform: translateY(-2px);
+}
+
+/* Novo container de detalhes de métrica expansível */
+.dashboard-details-box {
+  grid-column: 1 / -1; /* Força o box a ocupar toda a largura do grid (todas as colunas) */
+  max-height: 2000px;
+  opacity: 1;
+  overflow: hidden;
+  scroll-margin-top: 90px; /* Evita que o topo seja coberto pelo menu fixo no mobile */
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out, margin 0.3s ease-in-out, padding 0.3s ease-in-out;
+}
+
+.dashboard-details-box.collapsed {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-top-width: 0 !important;
+  border-bottom-width: 0 !important;
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+  pointer-events: none;
+}
+
+.dashboard-details-box.d-none {
+  display: none !important;
+}
+
+@media (min-width: 993px) {
+  .dashboard-metrics-grid .db-metric-card {
+    order: 1;
+  }
+  .dashboard-metrics-grid .dashboard-details-box {
+    order: 2;
+  }
+}
 
