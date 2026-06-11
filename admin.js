@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     professionals: [],
     crmSearchQuery: '',
     selectedProfFilter: 'todos',
-    dashboardViewMode: 'upcoming'
+    dashboardViewMode: 'upcoming',
+    viewingAllPendings: false
   };
 
   // Expose state globally for easy access if needed
@@ -253,6 +254,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.professionals.length === 0) {
       state.professionals = [...defaultProfessionals];
     }
+
+    // Filtrar agendamentos para excluir órfãos de profissionais não cadastrados
+    state.bookings = state.bookings.filter(b => {
+      if (!b.professional) return true;
+      return state.professionals.some(p => p.name === b.professional);
+    });
 
     // Garantir que o serviço interno de bloqueio está inserido no banco para não violar a chave estrangeira
     const hasBloqueio = state.services.some(s => s.id === 'bloqueio');
@@ -875,48 +882,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardToday = $('card-metric-today');
     if (cardToday) {
       cardToday.onclick = () => {
-        const prevMode = state.dashboardViewMode;
-        state.dashboardViewMode = state.dashboardViewMode === 'today' ? 'upcoming' : 'today';
-        renderDashboard();
-        if (state.dashboardViewMode === 'today' && prevMode !== 'today') {
-          scrollToDetails('today');
-        }
+        state.selectedDate = new Date();
+        state.pickerDate = new Date();
+        agendaFilter = 'todos';
+        state.viewingAllPendings = false;
+        const tabBtn = $('btn-tab-calendar');
+        if (tabBtn) tabBtn.click();
       };
     }
 
     const cardWeek = $('card-metric-week');
     if (cardWeek) {
       cardWeek.onclick = () => {
-        const prevMode = state.dashboardViewMode;
-        state.dashboardViewMode = state.dashboardViewMode === 'week' ? 'upcoming' : 'week';
-        renderDashboard();
-        if (state.dashboardViewMode === 'week' && prevMode !== 'week') {
-          scrollToDetails('week');
-        }
+        state.selectedDate = new Date();
+        state.pickerDate = new Date();
+        agendaFilter = 'todos';
+        state.viewingAllPendings = false;
+        const tabBtn = $('btn-tab-calendar');
+        if (tabBtn) tabBtn.click();
       };
     }
 
     const cardClients = $('card-metric-clients');
     if (cardClients) {
       cardClients.onclick = () => {
-        const prevMode = state.dashboardViewMode;
-        state.dashboardViewMode = state.dashboardViewMode === 'clients' ? 'upcoming' : 'clients';
-        renderDashboard();
-        if (state.dashboardViewMode === 'clients' && prevMode !== 'clients') {
-          scrollToDetails('clients');
-        }
+        const tabBtn = $('btn-tab-crm');
+        if (tabBtn) tabBtn.click();
       };
     }
 
     const cardPending = $('card-metric-pending');
     if (cardPending) {
       cardPending.onclick = () => {
-        const prevMode = state.dashboardViewMode;
-        state.dashboardViewMode = state.dashboardViewMode === 'pending' ? 'upcoming' : 'pending';
-        renderDashboard();
-        if (state.dashboardViewMode === 'pending' && prevMode !== 'pending') {
-          scrollToDetails('pending');
-        }
+        state.selectedDate = new Date();
+        state.pickerDate = new Date();
+        agendaFilter = 'Pendente';
+        state.viewingAllPendings = true;
+        const tabBtn = $('btn-tab-calendar');
+        if (tabBtn) tabBtn.click();
       };
     }
 
@@ -932,24 +935,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Botões Limpar / Fechar no topo dos boxes de detalhes
-    document.querySelectorAll('.btn-close-details').forEach(btn => {
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        state.dashboardViewMode = 'upcoming';
-        renderDashboard();
-      };
-    });
-
-    // Helper to scroll to details box smoothly (align to top with margin offset)
-    function scrollToDetails(mode) {
-      setTimeout(() => {
-        const box = $(`details-box-${mode}`);
-        if (box) {
-          box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 150);
-    }
   }
 
   // Setup Mobile Hamburger Menu & Drawer behavior
@@ -993,12 +978,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let revenueWeek = 0;
     let pendingCount = 0;
 
-    // Unique Clients Count
+    // Unique Loyalty Clients Count
+    const loyaltyActive = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
     const uniquePhones = new Set();
     state.bookings.forEach(b => {
       const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
       if (b.clientPhone && !isBlock) {
-        uniquePhones.add(b.clientPhone.trim());
+        const phone = b.clientPhone.trim();
+        if (loyaltyActive[phone] === true) {
+          uniquePhones.add(phone);
+        }
       }
     });
     const totalClients = uniquePhones.size;
@@ -1203,267 +1192,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Renderiza os 4 containers de Detalhes da Métrica Selecionada (Inline)
-    const modes = ['today', 'week', 'clients', 'pending'];
-    modes.forEach(mode => {
-      const detailsBox = $(`details-box-${mode}`);
-      const detailsTitle = $(`details-title-${mode}`);
-      const detailsList = $(`details-list-${mode}`);
-
-      if (detailsBox && detailsTitle && detailsList) {
-        if (state.dashboardViewMode !== mode) {
-          if (!detailsBox.classList.contains('collapsed')) {
-            detailsBox.classList.add('collapsed');
-            // Remove do fluxo do layout (grid) após terminar de recolher
-            setTimeout(() => {
-              if (state.dashboardViewMode !== mode) {
-                detailsBox.classList.add('d-none');
-                detailsList.innerHTML = '';
-              }
-            }, 400);
-          } else {
-            // Garante que está oculto do layout se já estiver fechado
-            detailsBox.classList.add('d-none');
-          }
-        } else {
-          // Revela no fluxo do layout (grid) antes de animar expansão
-          detailsBox.classList.remove('d-none');
-          // Força reflow do navegador para registrar a presença física antes da transição
-          detailsBox.offsetHeight; 
-          detailsBox.classList.remove('collapsed');
-          
-          let iconHTML = '';
-          let titleText = '';
-          let listData = [];
-
-          switch (mode) {
-            case 'today':
-              iconHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--gold);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-              titleText = 'Agendamentos de Hoje';
-              listData = state.bookings.filter(b => {
-                if (!b.date) return false;
-                const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
-                if (isBlock) return false;
-                const bDate = parseLocalDate(b.date);
-                bDate.setHours(0, 0, 0, 0);
-                return bDate.getTime() === todayTime;
-              });
-              listData.sort((a, b) => a.time.localeCompare(b.time));
-              break;
-
-            case 'week':
-              iconHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--gold);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-              titleText = 'Agendamentos da Semana';
-              listData = state.bookings.filter(b => {
-                if (!b.date) return false;
-                const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
-                if (isBlock) return false;
-                const bDate = parseLocalDate(b.date);
-                bDate.setHours(0, 0, 0, 0);
-                return isSameWeek(bDate, today);
-              });
-              listData.sort((a, b) => {
-                const d1 = parseLocalDate(a.date).getTime();
-                const d2 = parseLocalDate(b.date).getTime();
-                if (d1 !== d2) return d1 - d2;
-                return a.time.localeCompare(b.time);
-              });
-              break;
-
-            case 'clients':
-              iconHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--gold);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>`;
-              titleText = 'Clientes Registrados';
-              const loyaltyActive = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
-              const clientStamps = JSON.parse(localStorage.getItem('cesar_barbearia_fidelidades') || '{}');
-              const clientMap = {};
-              
-              state.bookings.forEach(b => {
-                const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
-                if (isBlock || !b.clientPhone) return;
-                const phone = b.clientPhone.trim();
-                
-                if (!clientMap[phone]) {
-                  clientMap[phone] = {
-                    name: b.clientName,
-                    phone: phone,
-                    isLoyalty: loyaltyActive[phone] === true,
-                    stamps: clientStamps[phone] || 0
-                  };
-                }
-              });
-              listData = Object.values(clientMap);
-              listData.sort((a, b) => a.name.localeCompare(b.name));
-              break;
-
-            case 'pending':
-              iconHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; color: var(--color-red, #ff453a);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-              titleText = 'Agendamentos Pendentes';
-              listData = state.bookings.filter(b => {
-                const isBlock = b.serviceId === 'bloqueio' || b.clientName === 'Horário Bloqueado';
-                if (isBlock) return false;
-                return getBookingStatus(b) === 'Pendente';
-              });
-              listData.sort((a, b) => {
-                const d1 = parseLocalDate(a.date).getTime();
-                const d2 = parseLocalDate(b.date).getTime();
-                if (d1 !== d2) return d1 - d2;
-                return a.time.localeCompare(b.time);
-              });
-              break;
-          }
-
-          detailsTitle.innerHTML = `${iconHTML} ${titleText}`;
-          detailsList.innerHTML = '';
-
-          if (listData.length === 0) {
-            let emptyMsg = 'Nenhum agendamento encontrado.';
-            if (mode === 'pending') emptyMsg = 'Nenhum agendamento pendente.';
-            else if (mode === 'clients') emptyMsg = 'Nenhum cliente cadastrado.';
-            detailsList.innerHTML = `<div class="no-bookings" style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">${emptyMsg}</div>`;
-          } else {
-            if (mode === 'clients') {
-              listData.forEach(c => {
-                const itemEl = document.createElement('div');
-                itemEl.className = 'db-upcoming-item db-client-item';
-                
-                const stampsBadge = c.isLoyalty 
-                  ? `<div class="upcoming-time-badge" style="background: rgba(200, 146, 42, 0.15); border-color: var(--gold);">
-                      <span class="upcoming-time" style="font-size: 14px;">👑</span>
-                      <span class="upcoming-date" style="color: var(--gold); font-weight:700;">${c.stamps}/10</span>
-                     </div>`
-                  : `<div class="upcoming-time-badge" style="background: rgba(255, 255, 255, 0.05); border-color: var(--border-light);">
-                      <span class="upcoming-time" style="font-size: 14px; color: var(--text-muted);">👤</span>
-                      <span class="upcoming-date" style="color: var(--text-muted);">CLIENTE</span>
-                     </div>`;
-
-                itemEl.innerHTML = `
-                  ${stampsBadge}
-                  <div class="upcoming-details">
-                    <div class="upcoming-client-name">${c.name}</div>
-                    <div class="upcoming-service-meta">${c.phone}</div>
-                  </div>
-                  <div class="upcoming-actions">
-                    <button class="btn-action-icon view-loyalty-btn" data-phone="${c.phone}" data-name="${c.name}" title="Ver Cartão Fidelidade">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
-                        <rect x="3" y="4" width="18" height="16" rx="2" />
-                        <line x1="7" y1="8" x2="17" y2="8" />
-                        <line x1="7" y1="12" x2="17" y2="12" />
-                        <line x1="7" y1="16" x2="13" y2="16" />
-                      </svg>
-                    </button>
-                  </div>
-                `;
-                itemEl.querySelector('.view-loyalty-btn').onclick = (e) => {
-                  e.stopPropagation();
-                  openLoyaltyCardModal(c.phone, c.name);
-                };
-                detailsList.appendChild(itemEl);
-              });
-            } else {
-              listData.forEach(b => {
-                const bDate = parseLocalDate(b.date);
-                const dateFormatted = bDate.toDateString() === todayStr
-                  ? 'Hoje'
-                  : `${String(bDate.getDate()).padStart(2, '0')}/${String(bDate.getMonth() + 1).padStart(2, '0')}`;
-
-                const calculatedStatus = getBookingStatus(b);
-                const isPending = calculatedStatus === 'Pendente';
-
-                const itemEl = document.createElement('div');
-                itemEl.className = `db-upcoming-item ${isPending ? 'pending-alert' : ''}`;
-                
-                let actionsHTML = '';
-                if (mode === 'pending') {
-                  actionsHTML = `
-                    <button class="btn-action-icon conclude-btn" data-id="${b.id}" title="Concluir" style="color: var(--color-green, #30d158); border-color: rgba(48, 209, 88, 0.3);">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;"><polyline points="20 6 9 17 4 12"/></svg>
-                    </button>
-                    <button class="btn-action-icon cancel-btn" data-id="${b.id}" title="Cancelar" style="color: var(--color-red, #ff453a); border-color: rgba(255, 69, 58, 0.3);">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px; height:16px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  `;
-                } else if (b.status === 'Confirmado' || b.status === 'Pendente') {
-                  actionsHTML = `
-                    <button class="btn-action-icon menu-trigger-btn" data-id="${b.id}" title="Ações">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px;">
-                        <circle cx="12" cy="6" r="1.5" />
-                        <circle cx="12" cy="12" r="1.5" />
-                        <circle cx="12" cy="18" r="1.5" />
-                      </svg>
-                    </button>
-                  `;
-                } else {
-                  actionsHTML = `<span class="badge-status ${calculatedStatus.toLowerCase()}" style="font-size:10px; padding: 4px 8px; border-radius:4px;">${calculatedStatus}</span>`;
-                }
-
-                const delayText = isPending 
-                  ? ` <span style="color:var(--color-red, #ff453a); font-weight:700; margin-left: 6px;">⚠️ Expirou há ${getDelayTimeStr(b)}</span>`
-                  : '';
-
-                itemEl.innerHTML = `
-                  <div class="upcoming-time-badge" style="${isPending ? 'background: rgba(255, 69, 58, 0.15); border-color: var(--color-red, #ff453a);' : ''}">
-                    <span class="upcoming-time" style="${isPending ? 'color: var(--color-red, #ff453a);' : ''}">${b.time}</span>
-                    <span class="upcoming-date">${dateFormatted}</span>
-                  </div>
-                  <div class="upcoming-details">
-                    <div class="upcoming-client-name">${b.clientName}${delayText}</div>
-                    <div class="upcoming-service-meta">${b.serviceName} • 💈 ${b.professional || 'César'}</div>
-                  </div>
-                  <div class="upcoming-actions" style="align-items: center; display: flex; gap: 6px;">
-                    ${actionsHTML}
-                  </div>
-                `;
-
-                if (mode === 'pending') {
-                  itemEl.querySelector('.conclude-btn').onclick = (e) => {
-                    e.stopPropagation();
-                    handleStatusChange(b.id, 'Concluir');
-                  };
-                  itemEl.querySelector('.cancel-btn').onclick = (e) => {
-                    e.stopPropagation();
-                    handleStatusChange(b.id, 'Cancelar');
-                  };
-                } else {
-                  const triggerBtn = itemEl.querySelector('.menu-trigger-btn');
-                  if (triggerBtn) {
-                    triggerBtn.onclick = (e) => {
-                      e.stopPropagation();
-                      
-                      const globalDropdown = document.getElementById('global-actions-dropdown');
-                      if (!globalDropdown) return;
-
-                      if (globalDropdown.dataset.id === b.id && !globalDropdown.classList.contains('hidden')) {
-                        globalDropdown.classList.add('hidden');
-                        return;
-                      }
-
-                      globalDropdown.dataset.id = b.id;
-                      globalDropdown.classList.remove('hidden');
-
-                      const rect = triggerBtn.getBoundingClientRect();
-                      const dropdownWidth = globalDropdown.offsetWidth || 120;
-                      const dropdownHeight = globalDropdown.offsetHeight || 132;
-
-                      const scrollY = window.scrollY || document.documentElement.scrollTop;
-                      const scrollX = window.scrollX || document.documentElement.scrollLeft;
-
-                      const left = rect.left + scrollX - dropdownWidth - 8;
-                      const top = rect.top + scrollY + (rect.height / 8) - (dropdownHeight / 1.8);
-
-                      globalDropdown.style.left = `${left}px`;
-                      globalDropdown.style.top = `${top}px`;
-                      globalDropdown.style.position = 'absolute';
-                    };
-                  }
-                }
-
-                detailsList.appendChild(itemEl);
-              });
-            }
-          }
-        }
-      }
-    });
   }
 
   function openWhatsappOwnerMsg(data) {
@@ -1485,10 +1213,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup filter button listeners inside tab-calendar
     document.querySelectorAll('.view-filters .btn-filter-status').forEach(btn => {
+      // Sync active state with the current agendaFilter value
+      if (btn.dataset.filter === agendaFilter) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+
       btn.onclick = () => {
         document.querySelectorAll('.view-filters .btn-filter-status').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         agendaFilter = btn.dataset.filter;
+        state.viewingAllPendings = false;
         renderDailyAgenda();
       };
     });
@@ -1616,6 +1352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
           }
           
+          state.viewingAllPendings = false;
           state.selectedDate = currentCellDate;
           state.pickerDate = new Date(currentCellDate);
           renderMiniPicker();
@@ -1709,6 +1446,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
           }
           
+          state.viewingAllPendings = false;
           state.selectedDate = currentCellDate;
           state.pickerDate = new Date(currentCellDate);
           renderMiniPicker();
@@ -1721,6 +1459,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Nav selectors
     $('picker-prev').onclick = () => {
+      state.viewingAllPendings = false;
       if (state.calendarViewMode === 'month') {
         state.pickerDate.setMonth(state.pickerDate.getMonth() - 1);
       } else {
@@ -1734,6 +1473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     $('picker-next').onclick = () => {
+      state.viewingAllPendings = false;
       if (state.calendarViewMode === 'month') {
         state.pickerDate.setMonth(state.pickerDate.getMonth() + 1);
       } else {
@@ -1757,8 +1497,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateStr = sDate.toDateString();
 
     // Labels
-    const daysWeekLong = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-    $('calendar-selected-date-label').textContent = `${daysWeekLong[sDate.getDay()]}, ${sDate.getDate()} de ${sDate.toLocaleDateString('pt-BR', { month: 'long' })}`;
+    if (agendaFilter === 'Pendente' && state.viewingAllPendings) {
+      $('calendar-selected-date-label').textContent = "Todos os Agendamentos Pendentes";
+      $('calendar-selected-date-sub').textContent = "Lista de todos os agendamentos expirados ou pendentes de todos os profissionais";
+    } else {
+      const daysWeekLong = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+      $('calendar-selected-date-label').textContent = `${daysWeekLong[sDate.getDay()]}, ${sDate.getDate()} de ${sDate.toLocaleDateString('pt-BR', { month: 'long' })}`;
+      $('calendar-selected-date-sub').textContent = "Lista de clientes e serviços agendados";
+    }
 
     const selectedProf = state.selectedProfFilter;
 
@@ -1776,7 +1522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         blockBtn.style.display = 'flex';
       } else {
         blockBtn.style.display = 'none';
-        if (agendaFilter === 'Bloqueado') {
+        if (agendaFilter === 'Blocked') {
           agendaFilter = 'todos';
           document.querySelectorAll('.view-filters .btn-filter-status').forEach(b => {
             if (b.dataset.filter === 'todos') {
@@ -1791,11 +1537,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filter day bookings
     let dayBookings = state.bookings.filter(b => {
-      const matchDate = parseLocalDate(b.date).toDateString() === dateStr;
       const matchProf = selectedProf === 'todos' || b.professional === selectedProf;
-      
       const isBlockRecord = b.serviceId === 'bloqueio';
       
+      if (agendaFilter === 'Pendente') {
+        if (state.viewingAllPendings) {
+          // Mostrar todos os pendentes de qualquer data, independente do profissional
+          return getBookingStatus(b) === 'Pendente' && !isBlockRecord;
+        } else {
+          // Mostrar apenas pendentes do dia selecionado
+          const matchDate = parseLocalDate(b.date).toDateString() === dateStr;
+          return matchDate && matchProf && getBookingStatus(b) === 'Pendente' && !isBlockRecord;
+        }
+      }
+      
+      const matchDate = parseLocalDate(b.date).toDateString() === dateStr;
       if (agendaFilter === 'Bloqueado') {
         // Mostrar apenas bloqueios de horário ativos (não dia inteiro)
         return matchDate && matchProf && isBlockRecord && b.time !== 'Dia Inteiro' && b.status !== 'Cancelado';
@@ -1807,8 +1563,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Sort by time
-    dayBookings.sort((a, b) => a.time.localeCompare(b.time));
+    // Sort by date and then by time
+    dayBookings.sort((a, b) => {
+      const d1 = parseLocalDate(a.date).getTime();
+      const d2 = parseLocalDate(b.date).getTime();
+      if (d1 !== d2) return d1 - d2;
+      return a.time.localeCompare(b.time);
+    });
 
     if (dayBookings.length === 0) {
       container.innerHTML = `
@@ -1820,7 +1581,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
           <h3>Nenhum Agendamento Encontrado</h3>
-          <p style="font-size:12px;margin-top:4px;">Não há agendamentos cadastrados para este dia com os filtros selecionados.</p>
+          <p style="font-size:12px;margin-top:4px;">${agendaFilter === 'Pendente' ? 'Não há agendamentos pendentes registrados.' : 'Não há agendamentos cadastrados para este dia com os filtros selecionados.'}</p>
         </div>
       `;
       return;
@@ -1895,9 +1656,20 @@ document.addEventListener('DOMContentLoaded', () => {
           ? `<span class="pending-delay-badge">⚠️ Atrasado há ${getDelayTimeStr(b)}</span>`
           : '';
 
+        const bDate = parseLocalDate(b.date);
+        const dateFormatted = bDate
+          ? (bDate.toDateString() === new Date().toDateString()
+              ? 'Hoje'
+              : `${String(bDate.getDate()).padStart(2, '0')}/${String(bDate.getMonth() + 1).padStart(2, '0')}`)
+          : '';
+        const showDateHTML = (agendaFilter === 'Pendente' && state.viewingAllPendings && dateFormatted)
+          ? `<span class="agenda-time-dur" style="color: var(--gold-light); font-weight: 600; font-size: 11px; margin-top: 2px;">${dateFormatted}</span>`
+          : '';
+
         card.innerHTML = `
           <div class="agenda-time">
             <span class="agenda-time-val">${b.time}</span>
+            ${showDateHTML}
             <span class="agenda-time-dur">${b.serviceDuration}</span>
           </div>
           <div class="agenda-detail">
@@ -3075,16 +2847,19 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const bDate = parseLocalDate(b.date);
       if (bDate >= cutoffDate) {
-        total++;
-        if (b.status === 'Concluido') concluido++;
-        else if (b.status === 'Cancelado') falta++;
-        else pendente++;
-        
-        if (b.clientName) {
-          clientCounts[b.clientName] = (clientCounts[b.clientName] || 0) + 1;
-        }
-        if (b.serviceName) {
-          serviceCounts[b.serviceName] = (serviceCounts[b.serviceName] || 0) + 1;
+        const calculatedStatus = getBookingStatus(b);
+        if (calculatedStatus === 'Concluido' || calculatedStatus === 'Cancelado' || calculatedStatus === 'Pendente') {
+          total++;
+          if (calculatedStatus === 'Concluido') concluido++;
+          else if (calculatedStatus === 'Cancelado') falta++;
+          else if (calculatedStatus === 'Pendente') pendente++;
+          
+          if (b.clientName) {
+            clientCounts[b.clientName] = (clientCounts[b.clientName] || 0) + 1;
+          }
+          if (b.serviceName) {
+            serviceCounts[b.serviceName] = (serviceCounts[b.serviceName] || 0) + 1;
+          }
         }
       }
     });
