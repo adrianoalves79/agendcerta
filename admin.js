@@ -485,10 +485,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openModal(id) {
     $(id).classList.add('active');
+    document.body.classList.add('modal-open');
   }
 
   function closeModal(id) {
     $(id).classList.remove('active');
+    const activeModals = document.querySelectorAll('.modal-overlay.active');
+    if (activeModals.length === 0) {
+      document.body.classList.remove('modal-open');
+    }
   }
 
   // ── Toast Notification & Audio Alerts ────────────────────────────────────
