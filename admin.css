@@ -5,6 +5,7 @@
    ========================================================================== */
 :root {
   --gold: #C8922A;
+  --red: #c82a2a;
   --gold-light: #E0A83A;
   --gold-gradient: linear-gradient(135deg, #E0A83A 0%, #B8801A 100%);
   --bg: #030304;
@@ -38,6 +39,7 @@
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.8);
   --shadow-gold: 0 4px 15px rgba(200, 146, 42, 0.2);
+  --shadow-red: 0 4px 15px rgba(200, 42, 42, 0.2);
 }
 
 /* ==========================================================================
@@ -3995,11 +3997,11 @@ select option {
 
 .custom-confirm-card {
   background-color: var(--bg-card);
-  border: 1px solid var(--gold);
+  border: 1px solid var(--red);
   border-radius: var(--radius-lg);
   max-width: 420px;
   width: 100%;
-  box-shadow: var(--shadow-gold), var(--shadow-lg);
+  box-shadow: var(--shadow-red), var(--shadow-lg);
   overflow: hidden;
   transform: scale(0.95) translateY(10px);
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.15);
