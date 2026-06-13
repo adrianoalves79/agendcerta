@@ -1141,6 +1141,10 @@ document.addEventListener('DOMContentLoaded', () => {
             ? ` <span style="color:var(--color-red, #ff453a); font-weight:700; margin-left: 6px;">⚠️ Expirou há ${getDelayTimeStr(b)}</span>`
             : '';
 
+          const showProfUpcoming = state.professionals.filter(p => p.active !== false).length >= 2
+            ? ` • 💈 ${b.professional || 'César'}`
+            : '';
+
           itemEl.innerHTML = `
             <div class="upcoming-time-badge" style="${isPending ? 'background: rgba(255, 69, 58, 0.15); border-color: var(--color-red, #ff453a);' : ''}">
               <span class="upcoming-time" style="${isPending ? 'color: var(--color-red, #ff453a);' : ''}">${b.time}</span>
@@ -1148,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="upcoming-details">
               <div class="upcoming-client-name">${b.clientName}${delayText}</div>
-              <div class="upcoming-service-meta">${b.serviceName} • 💈 ${b.professional || 'César'}</div>
+              <div class="upcoming-service-meta">${b.serviceName}${showProfUpcoming}</div>
             </div>
             <div class="upcoming-actions" style="align-items: center; display: flex; gap: 6px;">
               ${actionsHTML}
@@ -1629,7 +1633,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<div class="agenda-obs" style="border-left-color: ${isBlock ? 'var(--color-red, #ff453a)' : 'var(--gold)'};"><strong>Obs:</strong> ${b.clientObs}</div>`
         : '';
 
+      const activeProfsCount = state.professionals.filter(p => p.active !== false).length;
       if (isBlock) {
+        const showProfBlockHTML = activeProfsCount >= 2
+          ? `<span class="agenda-service-badge" style="background-color: rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); color: var(--color-red, #ff453a);">${profColor.emoji} ${b.professional || 'César'}</span>`
+          : '';
+
         card.innerHTML = `
           <div class="agenda-time">
             <span class="agenda-time-val">${b.time}</span>
@@ -1638,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="agenda-detail">
             <div class="agenda-title-row">
               <span class="agenda-client-name" style="color: var(--color-red, #ff453a); font-weight:700;">🚫 HORÁRIO BLOQUEADO</span>
-              <span class="agenda-service-badge" style="background-color: rgba(255, 69, 58, 0.1); border-color: rgba(255, 69, 58, 0.2); color: var(--color-red, #ff453a);">${profColor.emoji} ${b.professional || 'César'}</span>
+              ${showProfBlockHTML}
             </div>
             <div class="agenda-meta-row">
               <span class="agenda-meta-item">Este horário está reservado para bloqueio interno da agenda.</span>
@@ -1652,9 +1661,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
       } else {
-        const delayBadgeHTML = isPending 
-          ? `<span class="pending-delay-badge">⚠️ Atrasado há ${getDelayTimeStr(b)}</span>`
-          : '';
+        const delayBadgeHTML = '';
 
         const bDate = parseLocalDate(b.date);
         const dateFormatted = bDate
@@ -1664,6 +1671,10 @@ document.addEventListener('DOMContentLoaded', () => {
           : '';
         const showDateHTML = (agendaFilter === 'Pendente' && state.viewingAllPendings && dateFormatted)
           ? `<span class="agenda-time-dur" style="color: var(--gold-light); font-weight: 600; font-size: 11px; margin-top: 2px;">${dateFormatted}</span>`
+          : '';
+
+        const showProfMetaHTML = activeProfsCount >= 2
+          ? `<span class="agenda-meta-item">💈 ${profColor.emoji} ${b.professional || 'César'}</span>`
           : '';
 
         card.innerHTML = `
@@ -1683,7 +1694,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 ${b.clientPhone}
               </span>
-              <span class="agenda-meta-item">💈 ${profColor.emoji} ${b.professional || 'César'}</span>
+              ${showProfMetaHTML}
               <span class="agenda-meta-item" style="color: var(--gold); font-weight:700;">${b.servicePrice}</span>
             </div>
             ${hasObsHTML}
@@ -2631,7 +2642,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('crm-total-count').textContent = customers.length;
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum cliente cadastrado ou correspondente à busca.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum cliente cadastrado ou correspondente à busca.</td></tr>';
       return;
     }
 
@@ -2648,7 +2659,7 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.innerHTML = `
         <td data-label="Cliente" style="font-weight:600;">${c.name}</td>
         <td data-label="WhatsApp">${c.phone}</td>
-        <td data-label="Nascimento">${c.birth}</td>
+        <!-- <td data-label="Nascimento">${c.birth}</td> -->
         <td data-label="Visitas" style="font-weight:700;color:var(--gold);">${c.visits} cortes</td>
         <td data-label="Último Agendamento" style="font-size:12px;color:var(--text-muted);">${c.lastBookingStr}</td>
         <td data-label="Fidelidade">

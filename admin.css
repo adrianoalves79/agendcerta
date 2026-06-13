@@ -1171,13 +1171,13 @@ body {
 }
 
 .agenda-service-badge {
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-light);
+  background-color: rgba(200, 146, 42, 0.12);
+  border: 1px solid var(--gold);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 2px 8px;
   border-radius: 4px;
-  color: var(--text-muted);
+  color: var(--gold-light);
 }
 
 .agenda-meta-row {
@@ -1501,13 +1501,33 @@ body {
 }
 
 .crm-summary-info {
-  font-size: 13px;
+  background-color: rgba(200, 146, 42, 0.08);
+  border: 1px solid rgba(200, 146, 42, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  height: 40px;
 }
 
 .crm-summary-info strong {
-  color: var(--gold);
-  font-size: 15px;
+  background-color: var(--gold);
+  color: #000;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .crm-table-box {
@@ -1559,6 +1579,9 @@ body {
   border-radius: var(--radius-lg);
   max-width: 500px;
   width: 100%;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   transform: scale(0.95) translateY(10px);
@@ -1608,7 +1631,10 @@ body {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .modal-body.align-center {
@@ -2134,6 +2160,10 @@ select option {
 }
 
 @media (max-width: 768px) {
+  .modal-card {
+    max-width: calc(100% - 40px);
+  }
+
   /* Transform tables to stack cards on mobile */
   .admin-table, 
   .admin-table thead, 
@@ -2202,6 +2232,60 @@ select option {
     width: 100%;
     justify-content: center;
   }
+
+  /* CRM Header styling adjustments for mobile */
+  .crm-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .crm-header-row .search-wrap {
+    max-width: none;
+    width: 100%;
+  }
+
+  #btn-crm-manage-loyalty {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .crm-summary-info {
+    width: 100%;
+    justify-content: center;
+    height: auto;
+    padding: 10px 14px;
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* Loyalty Client Row adjustments for mobile to prevent squishing and overlapping */
+  .loyalty-client-row {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .loyalty-client-info {
+    flex: 1 1 calc(100% - 60px);
+    min-width: 0;
+  }
+
+  .loyalty-client-info-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .loyalty-client-row .loyalty-active-badge,
+  .loyalty-client-row .loyalty-client-stamps-badge {
+    order: 2;
+  }
+
+  .loyalty-client-row .btn-loyalty-toggle {
+    order: 3;
+    margin-left: auto;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2226,6 +2310,8 @@ select option {
   }
 
   .modal-card {
+    max-width: calc(100% - 20px);
+    max-height: calc(100vh - 60px);
     border-radius: var(--radius);
   }
 
@@ -3645,6 +3731,18 @@ select option {
 .modal-card-wide {
   max-width: 560px;
   width: 100%;
+}
+
+#manage-loyalty-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  flex: 1 1 auto;
+  min-height: 120px;
 }
 
 .loyalty-client-row {
