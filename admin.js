@@ -2672,10 +2672,18 @@ document.addEventListener('DOMContentLoaded', () => {
             ${isLoyaltyActive ? '<span class="loyalty-active-badge">Auto ✓</span>' : ''}
           </div>
         </td>
-        <td data-label="Remover" style="text-align: right;">
-          <button class="btn-danger-outline crm-remove-btn" data-phone="${c.phone}" data-name="${c.name}" style="padding: 6px 12px; font-size: 11px; border-radius: var(--radius-sm);">Remover</button>
+        <td data-label="Ações" style="text-align: right;">
+          <div style="display:inline-flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;width:100%;">
+            <button class="btn-primary loyalty-card-btn" data-phone="${c.phone}" data-name="${c.name}" style="padding: 6px 12px; font-size: 11px; border-radius: var(--radius-sm);">Fidelidade</button>
+            <button class="btn-danger-outline crm-remove-btn" data-phone="${c.phone}" data-name="${c.name}" style="padding: 6px 12px; font-size: 11px; border-radius: var(--radius-sm);">Remover</button>
+          </div>
         </td>
       `;
+
+      tr.querySelector('.loyalty-card-btn').onclick = (e) => {
+        const btn = e.currentTarget;
+        openLoyaltyCardModal(btn.dataset.phone, btn.dataset.name);
+      };
 
       tr.querySelector('.crm-remove-btn').onclick = (e) => {
         const btn = e.currentTarget;
