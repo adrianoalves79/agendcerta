@@ -2600,10 +2600,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="loyalty-client-avatar-sm">${isActive ? '👑' : initials}</div>
         <div class="loyalty-client-info">
           <div class="loyalty-client-info-name">${c.name}</div>
-          <div class="loyalty-client-info-meta">${c.phone} · ${c.visits} visitas concluídas</div>
+          <div class="loyalty-client-info-meta">${c.phone}</div>
         </div>
-        ${isActive ? `<span class="loyalty-active-badge">Ativo</span>` : ''}
-        ${stamps > 0 ? `<span class="loyalty-client-stamps-badge">👑 ${stamps}/10</span>` : ''}
         <button class="btn-loyalty-toggle ${isActive ? 'is-active' : ''}" data-phone="${c.phone}" data-name="${c.name}">
           ${isActive ? 'Remover' : '+ Adicionar'}
         </button>
