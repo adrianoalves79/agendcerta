@@ -2311,7 +2311,7 @@ select option {
 
   .modal-card {
     max-width: calc(100% - 20px);
-    max-height: calc(90vh - 100px);
+    max-height: calc(70vh - 40px);
     border-radius: var(--radius);
   }
 
