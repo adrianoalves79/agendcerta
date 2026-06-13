@@ -3972,6 +3972,83 @@ select option {
   justify-content: flex-end;
   padding-left: 16px;
 }
+/* Custom Center Confirm Dialogue Overlay */
+.custom-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.custom-confirm-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.custom-confirm-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-lg);
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow-gold), var(--shadow-lg);
+  overflow: hidden;
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.15);
+}
+
+.custom-confirm-overlay.active .custom-confirm-card {
+  transform: scale(1) translateY(0);
+}
+
+.custom-confirm-header {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.custom-confirm-header h3 {
+  font-family: var(--font-title);
+  font-size: 16px;
+  text-transform: uppercase;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.custom-confirm-body {
+  padding: 24px;
+}
+
+.custom-confirm-body p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.custom-confirm-footer {
+  padding: 16px 24px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-top: 1px solid var(--border-light);
+}
+
+.custom-confirm-footer button {
+  padding: 8px 18px;
+}
 
 /* Custom Tooltip Confirm Popup */
 .custom-confirm-popup {

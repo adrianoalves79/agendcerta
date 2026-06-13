@@ -496,6 +496,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function showCustomConfirm(message) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'custom-confirm-overlay';
+      overlay.innerHTML = `
+        <div class="custom-confirm-card">
+          <div class="custom-confirm-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" style="width: 24px; height: 24px; flex-shrink: 0;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3>Confirmação</h3>
+          </div>
+          <div class="custom-confirm-body">
+            <p>${message}</p>
+          </div>
+          <div class="custom-confirm-footer">
+            <button class="btn-cancel btn-no">Não</button>
+            <button class="btn-primary btn-yes">Sim</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      
+      // Prevent background scroll
+      document.body.classList.add('modal-open');
+
+      // Trigger animation
+      setTimeout(() => {
+        overlay.classList.add('active');
+      }, 10);
+
+      const close = (val) => {
+        overlay.classList.remove('active');
+        // Restore background scroll if no other modal is open
+        const activeModals = document.querySelectorAll('.modal-overlay.active');
+        if (activeModals.length === 0) {
+          document.body.classList.remove('modal-open');
+        }
+        setTimeout(() => {
+          overlay.remove();
+          resolve(val);
+        }, 200);
+      };
+
+      overlay.querySelector('.btn-yes').onclick = () => close(true);
+      overlay.querySelector('.btn-no').onclick = () => close(false);
+      overlay.onclick = (e) => {
+        if (e.target === overlay) close(false);
+      };
+    });
+  }
+
   // ── Toast Notification & Audio Alerts ────────────────────────────────────
   function showToast(title, body) {
     const container = $('toast-container');
@@ -2084,7 +2136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (activeClientBookings.length > 0) {
-          const confirmCancel = confirm(`Existem ${activeClientBookings.length} agendamento(s) ativo(s) de cliente(s) neste dia. Deseja cancelá-los automaticamente e prosseguir com o bloqueio do dia todo?`);
+          const confirmCancel = await showCustomConfirm(`Existem ${activeClientBookings.length} agendamento(s) ativo(s) de cliente(s) neste dia. Deseja cancelá-los automaticamente e prosseguir com o bloqueio do dia todo?`);
           if (!confirmCancel) return;
         }
 
@@ -2155,7 +2207,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (hasCollision) {
-        const confirmOverbook = confirm(`Atenção: O profissional ${inputProf} já possui um agendamento ativo para às ${inputTime} no dia ${inputDate.toLocaleDateString('pt-BR')}.\nDeseja registrar o agendamento mesmo assim?`);
+        const confirmOverbook = await showCustomConfirm(`Atenção: O profissional ${inputProf} já possui um agendamento ativo para às ${inputTime} no dia ${inputDate.toLocaleDateString('pt-BR')}.\nDeseja registrar o agendamento mesmo assim?`);
         if (!confirmOverbook) return;
       }
 
@@ -2402,7 +2454,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Delete Click
       card.querySelector('.delete-btn').onclick = async () => {
-        if (confirm(`Tem certeza que deseja excluir o serviço "${s.name}"? Isso impedirá novos agendamentos para ele.`)) {
+        const confirmed = await showCustomConfirm(`Tem certeza que deseja excluir o serviço "${s.name}"? Isso impedirá novos agendamentos para ele.`);
+        if (confirmed) {
           const { error } = await supabase.from('servicos').delete().eq('id', s.id);
           if (error) {
             console.error("Erro ao deletar serviço no Supabase:", error);
@@ -2463,7 +2516,8 @@ document.addEventListener('DOMContentLoaded', () => {
           alert("Não é possível excluir o profissional principal (César).");
           return;
         }
-        if (confirm(`Deseja mesmo remover o barbeiro ${p.name} da equipe?`)) {
+        const confirmed = await showCustomConfirm(`Deseja mesmo remover o barbeiro ${p.name} da equipe?`);
+        if (confirmed) {
           const { error } = await supabase.from('profissionais').delete().eq('id', p.id);
           if (error) {
             console.error("Erro ao deletar profissional no Supabase:", error);
@@ -2685,11 +2739,12 @@ document.addEventListener('DOMContentLoaded', () => {
         openLoyaltyCardModal(btn.dataset.phone, btn.dataset.name);
       };
 
-      tr.querySelector('.crm-remove-btn').onclick = (e) => {
+      tr.querySelector('.crm-remove-btn').onclick = async (e) => {
         const btn = e.currentTarget;
         const phone = btn.dataset.phone;
         const name = btn.dataset.name;
-        if (confirm(`Tem certeza que deseja remover ${name} do programa fidelidade?`)) {
+        const confirmed = await showCustomConfirm(`Tem certeza que deseja remover ${name} do programa fidelidade?`);
+        if (confirmed) {
           const loyaltyActiveNow = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
           delete loyaltyActiveNow[phone];
           localStorage.setItem('cesar_barbearia_loyalty_active', JSON.stringify(loyaltyActiveNow));
@@ -2777,8 +2832,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Button Reset Card
-    $('btn-loyalty-reset').onclick = () => {
-      if (confirm(`Deseja mesmo zerar o cartão fidelidade de ${name}?`)) {
+    $('btn-loyalty-reset').onclick = async () => {
+      const confirmed = await showCustomConfirm(`Deseja mesmo zerar o cartão fidelidade de ${name}?`);
+      if (confirmed) {
         const clientFidelidades = JSON.parse(localStorage.getItem('cesar_barbearia_fidelidades') || '{}');
         clientFidelidades[phone] = 0;
         localStorage.setItem('cesar_barbearia_fidelidades', JSON.stringify(clientFidelidades));
