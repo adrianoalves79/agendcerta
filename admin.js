@@ -2647,7 +2647,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('crm-total-count').textContent = customers.length;
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum cliente cadastrado ou correspondente à busca.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Nenhum cliente cadastrado ou correspondente à busca.</td></tr>';
       return;
     }
 
@@ -2665,7 +2665,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <td data-label="Cliente" style="font-weight:600;">${c.name}</td>
         <td data-label="WhatsApp">${c.phone}</td>
         <!-- <td data-label="Nascimento">${c.birth}</td> -->
-        <td data-label="Visitas" style="font-weight:700;color:var(--gold);">${c.visits} cortes</td>
         <td data-label="Último Agendamento" style="font-size:12px;color:var(--text-muted);">${c.lastBookingStr}</td>
         <td data-label="Fidelidade">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -2673,14 +2672,22 @@ document.addEventListener('DOMContentLoaded', () => {
             ${isLoyaltyActive ? '<span class="loyalty-active-badge">Auto ✓</span>' : ''}
           </div>
         </td>
-        <td data-label="Ações" style="text-align: right;">
-          <button class="btn-primary loyalty-card-btn" data-phone="${c.phone}" data-name="${c.name}">Fidelidade</button>
+        <td data-label="Remover" style="text-align: right;">
+          <button class="btn-danger-outline crm-remove-btn" data-phone="${c.phone}" data-name="${c.name}" style="padding: 6px 12px; font-size: 11px; border-radius: var(--radius-sm);">Remover</button>
         </td>
       `;
 
-      tr.querySelector('.loyalty-card-btn').onclick = (e) => {
+      tr.querySelector('.crm-remove-btn').onclick = (e) => {
         const btn = e.currentTarget;
-        openLoyaltyCardModal(btn.dataset.phone, btn.dataset.name);
+        const phone = btn.dataset.phone;
+        const name = btn.dataset.name;
+        if (confirm(`Tem certeza que deseja remover ${name} do programa fidelidade?`)) {
+          const loyaltyActiveNow = JSON.parse(localStorage.getItem('cesar_barbearia_loyalty_active') || '{}');
+          delete loyaltyActiveNow[phone];
+          localStorage.setItem('cesar_barbearia_loyalty_active', JSON.stringify(loyaltyActiveNow));
+          showToast('Fidelidade Removida', `${name} foi removido do programa fidelidade.`);
+          renderCRMTab();
+        }
       };
 
       tbody.appendChild(tr);
